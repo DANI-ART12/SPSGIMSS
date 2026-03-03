@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+
+<style>
+@page { size: letter; margin: 10mm; }
+
+body{
+  font-family: Arial;
+  font-size:12px;
+}
+
+.page{
+  width:100%;
+}
+.page:last-child{
+  page-break-after:auto;
+}
+
+.header{
+  text-align:center;
+  font-weight:bold;
+}
+
+.round-box{
+  border:2px solid #000;
+  border-radius:18px;
+  padding:10px;
+  margin-top:8px;
+}
+
+.box-thick{
+  border:3px solid #000;
+  padding:8px;
+  margin-top:8px;
+}
+
+.tbl{
+  width:100%;
+  border-collapse:collapse;
+}
+
+.tbl td,.tbl th{
+  border:1px solid #000;
+  padding:4px;
+}
+
+.tbl-thick td,.tbl-thick th{
+  border:2px solid #000;
+}
+
+.no-border td{
+  border:none;
+  padding:2px 4px;
+}
+
+.section3{
+  display:grid;
+  grid-template-columns: 1.3fr 0.9fr 0.9fr;
+}
+
+.sign-grid{
+  display:grid;
+  grid-template-columns: 1fr 1.6fr 1fr;
+  gap:30px;
+  margin-top:10px;
+}
+
+.sign-box{
+  border:2px solid #000;
+  height:140px;
+}
+
+.double-line{
+  border-top:3px solid #000;
+  border-bottom:3px solid #000;
+  text-align:center;
+  font-weight:bold;
+  margin-top:6px;
+}
+.datos-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 28px;
+    row-gap: 6px;
+    font-size: 12px;
+}
+.btnTop{
+  padding:8px 14px;
+  border:2px solid #000;
+  background:white;
+  cursor:pointer;
+  margin-right:6px;
+  font-size:13px;
+}
+
+.modal{
+  display:none;
+  position:fixed;
+  z-index:10000;
+  left:0;
+  top:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.35);
+}
+
+.modal-content{
+  background:white;
+  width:520px;
+  padding:18px;
+  border:3px solid #000;
+  margin:60px auto;
+}
+
+.modal h3{
+  margin-top:0;
+}
+.dato-destacado {
+    font-weight: bold;
+    color: #000000;
+    font-size: 12px;
+}
+
+/* ======================================== */
+/* FORZAR FONDO BLANCO Y TEXTO NEGRO SIEMPRE */
+/* ======================================== */
+body, .page, .round-box, .box-thick, .tbl, .tbl td, .tbl th, 
+.sign-grid, .datos-grid, .double-line, .firma-section {
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+}
+table, tr, td, div, p, h1, h2, h3, span {
+    color: #000000 !important;
+}
+input, textarea, select {
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+    border: 1px solid #000000 !important;
+}
+
+/* ======================================== */
+/* AJUSTE PARA LA SEGUNDA PÁGINA (REVERSO)  */
+/* ======================================== */
+.page:last-child {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 100vh;
+    height: auto;
+    page-break-after: auto;
+    padding-bottom: 0;
+    margin-bottom: 0;
+}
+
+.page:last-child .box-thick,
+.page:last-child .tbl,
+.page:last-child .double-line,
+.page:last-child .sign-grid {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.page:last-child .box-thick {
+    padding: 8px 5px;
+}
+
+.page:last-child .tbl {
+    margin-top: 2px;
+    margin-bottom: 2px;
+}
+
+.page:last-child .double-line {
+    margin-top: 2px;
+    margin-bottom: 2px;
+}
+
+/* ======================================== */
+/* DESTACAR DATOS DEL EMPLEADO              */
+/* ======================================== */
+
+/* Datos del empleado en la parte frontal */
+.round-box td:contains("EMPLEADO") + td,
+.round-box td:contains("EMPLEADO") ~ td,
+.round-box tr:has(td:contains("EMPLEADO")) td {
+    font-weight: bold !important;
+    color: #000000 !important;
+    font-size: 12px !important;
+}
+
+/* Matrícula, G.J, TC, Teléfono */
+.round-box td:contains("MAT."),
+.round-box td:contains("G.J"),
+.round-box td:contains("TC"),
+.round-box td:contains("TEL OFICINA") {
+    font-weight: bold !important;
+    color: #000000 !important;
+}
+
+/* Datos en el reverso */
+.datos-grid div:contains("EMPLEADO COMISIONADO") + div,
+.datos-grid div:contains("MATRÍCULA") + div,
+.datos-grid div:contains("GRUPO JERÁRQUICO") + div,
+.datos-grid div:contains("TIPO CONTRATACIÓN") + div {
+    font-weight: bold !important;
+    color: #000000 !important;
+    font-size: 12px !important;
+}
+
+/* Valores específicos (los que vienen de u.get) */
+.nombre-empleado-valor,
+.matricula-valor,
+.puesto-valor,
+.departamento-valor,
+.gj-valor,
+.tipo-contrato-valor {
+    font-weight: bold !important;
+    color: #000000 !important;
+}
+
+
+
+/* ======================================== */
+/* ESTILOS DE IMPRESIÓN */
+/* ======================================== */
+@media print{
+   #btnPrint,
+   #btnAdmin,
+   #barra_botones {
+    display:none !important;
+   }
+
+   table, tr, td, div {
+    page-break-inside: avoid;
+   }
+}
+</style>
+</head>
+
+
+<body>
+
+<!-- ===================== FRENTE ===================== -->
+
+<div class="page">
+
+<table class="no-border" width="100%">
+<tr>
+<td width="120">
+<img src="data:image/png;base64,{{ logo_base64 }}" width="90">
+</td>
+
+<td class="header">
+INSTITUTO MEXICANO DEL SEGURO SOCIAL<br>
+PLIEGO DE COMISIÓN No. {{ m_folio }}<br>
+AUTORIZACIÓN DE COMISIÓN
+</td>
+
+<td width="220">
+Lugar y fecha:<br>
+{{ m_destino }} al {{ m_fecha_creacion }}
+</td>
+</tr>
+</table>
+
+<div class="round-box">
+
+<table class="no-border" width="100%">
+<tr>
+<td width="70%">FUNCIONARIO SOLICITANTE: {{ f_solicitante }}</td>
+<td>C.P. {{ f_cp }}</td>
+</tr>
+
+<tr><td>CATEGORÍA:  {{f_categoria}}</td><td></td></tr>
+<tr><td>ÁREA SOLICITANTE: {{ f_area }}</td><td></td></tr>
+
+<tr>
+<td>EMPLEADO: <span class="dato-destacado">{{nombre_empleado}}</span></td>
+<td>G.J <span class="dato-destacado">{{ grupo_jerarquico }}</span> &nbsp;&nbsp; MAT. <span class="dato-destacado">{{ matricula }}</span></td>
+</tr>
+
+<tr>
+<td>PUESTO:<span class="dato-destacado">{{ f_categoria }}</span></td>
+<td>TC <span class="dato-destacado">{{ tipo_contrato }}</span> &nbsp;&nbsp; TEL OFICINA {{ f_tel }}</td>
+</tr>
+
+<tr><td>DEPARTAMENTO:{{departamento_empleado}}</td><td></td></tr>
+
+<tr>
+<td colspan="2">
+OBJETO DE LA COMISIÓN:<br>
+{{ m_objeto }}
+</td>
+</tr>
+
+<tr>
+<td>DESTINO DE LA COMISIÓN {{ m_destino }} DEL {{ m_inicio }}</td>
+<td>AL {{ m_fin }}</td>
+</tr>
+
+<tr><td>MEDIO DE TRANSPORTE: {{ m_medio_transporte }}</td><td></td></tr>
+
+<tr>
+<td>CHOFER: {{ m_chofer }}</td>
+<td>ACOMPAÑANTE: {{ m_acompañante }}</td>
+</tr>
+</table>
+
+</div>
+
+<!-- ANTICIPOS 3 COLUMNAS -->
+
+<div class="section3" style="margin-top:10px;">
+
+<table class="tbl">
+<tr>
+<th colspan="2">
+CONCEPTO DE ANTICIPOS PARA ( {{ dias_comision }} ) DÍAS
+</th>
+</tr>
+
+<tr><td>VIÁTICOS</td><td>${{ anticipo_viaticos }}</td></tr>
+<tr><td>GASOLINA</td><td>${{ anticipo_gasolina }}</td></tr>
+<tr><td>PEAJE</td><td>${{ anticipo_peaje }}</td></tr>
+<tr><td>TRANSPORTE TERRESTRE</td><td>${{ anticipo_transporte_t }}</td></tr>
+<tr><td>AVIÓN</td><td>${{ anticipo_avion }}</td></tr>
+<tr><td>SUBTOTAL SIN AVIÓN</td><td>${{ subtotal_sin_avion }}</td></tr>
+<tr><td><b>GASTO TOTAL</b></td><td><b>${{ total_anticipo }}</b></td></tr>
+</table>
+
+<table class="tbl">
+<tr>
+<th>VALE DE TESORERÍA IMSS</th>
+</tr>
+<tr>
+<td style="height:170px;">
+RECIBÍ LA CANTIDAD DE: $ {{ total_anticipo }}<br><br>
+PARA EL DESEMPEÑO DE ESTA COMISIÓN<br><br><br>
+_________________________<br>
+{{nombre_empleado}}<br>
+FIRMA DEL COMISIONADO
+</td>
+</tr>
+</table>
+
+<table class="tbl">
+<tr><th>SELLO DE TESORERÍA</th></tr>
+<tr><td style="height:170px;"></td></tr>
+</table>
+
+</div>
+
+<div class="round-box">
+OBSERVACIONES<br><br>
+{{ observaciones }}<br><br><br>
+
+<div style="text-align:center;">
+    <strong>{{ autoriza_nombre }}</strong><br>
+    <span style="font-size: 11px;">{{ autoriza_cargo }}</span><br><br>
+    PERSONA SERVIDORA PÚBLICA QUE AUTORIZA LA COMISIÓN
+</div>
+
+<div style="text-align:right;">
+    {{nombre_empleado}}<br>
+FIRMA DEL COMISIONADO 
+</div>
+</div>
+
+<div class="sign-grid">
+
+<div>
+LUGAR Y SELLO
+<div class="sign-box" ></div>
+</div>
+
+<div>
+CERTIFICACIÓN DE TRÁNSITO Y PERMANENCIA
+<table class="tbl">
+<tr><td>LLEGÓ / SALIÓ</td></tr>
+<tr><td style="height:50px;"></td></tr>
+<tr><td style="height:50px;"></td></tr>
+<tr><td>FECHA Y HORA</td></tr>
+</table>
+</div>
+
+<div>
+FIRMA DE CERTIFICACIÓN
+<table class="tbl">
+<tr><td style="height:100px;"></td></tr>
+<tr><td>NOMBRE Y CARGO</td></tr>
+</table>
+</div>
+
+</div>         
+
+<div style="font-size:11px; margin-top:6px;">
+NOTA: AL TERMINO DE LA OMISION EL INTERESADO DEBERA DE HACER A LA BREVEDEDAD SU COMPROBACION  PARA EVITAR SER REPORTADO COMO MOROSO EN CASO DE OBSERVACIONES Y AMPLIACIONES DE CERTIFICACION HACERLAS AL REVERSO
+<span style="float:right;">Clave: 1000-009-012</span>
+</div>
+
+</div>
+
+
+<!-- ===================== REVERSO ===================== -->
+
+<div class="page">
+
+<table width="100%">
+<tr>
+<td width="120">
+<img src="data:image/png;base64,{{ logo_base64 }}" width="90">
+</td>
+
+<td class="header">
+INSTITUTO MEXICANO DEL SEGURO SOCIAL<br>
+COMPROBACIÓN DEL PLIEGO DE COMISIÓN No {{ m_folio }}
+</td>
+
+<td width="200">
+FECHA: {{ m_fecha_creacion}}
+</td>
+</tr>
+</table>
+
+<div class="box-thick">
+
+<div class="datos-grid">
+
+<!-- IZQUIERDA -->
+<div><b>FUNCIONARIO SOLICITANTE:</b> {{ f_solicitante }}</div>
+<div></div>
+
+<div><b>CATEGORÍA:</b> {{ f_categoria }}</div>
+<div><b>TELÉFONO OFICINA:</b> {{ f_tel}}</div>
+
+<div><b>DEPENDENCIA:</b> {{ f_area }}</div>
+<div></div>
+
+<div><b>EMPLEADO COMISIONADO:</b> <span class="dato-destacado">{{ nombre_empleado }}</span></div>
+<div><b>TIPO CONTRATACIÓN:</b> {{ tipo_contrato }}</div>
+
+<div><b>MATRÍCULA:</b> <span class="dato-destacado">{{ matricula }}</span></div>
+<div><b>GRUPO JERÁRQUICO:</b> {{ grupo_jerarquico }}</div>
+
+<div><b>OBJETO DE LA COMISIÓN:</b> {{ m_objeto }}</div>
+<div></div>
+
+<div><b>PERIODO SOLICITADO:</b> {{ m_inicio }} al {{ m_fin }}</div>
+<div><b>PERIODO COMPROBADO:</b> {{ dias_comision }}</div>
+
+
+<div><b>LUGAR(ES):</b> {{ m_destino }}</div>
+<div></div>
+
+<div><b>MEDIO DE TRANSPORTE:</b> {{ m_medio_transporte }}</div>
+<div></div>
+
+</div>
+</div>
+
+<div class="double-line">LIQUIDACIÓN</div>
+
+<table class="tbl tbl-thick">
+<tr>
+<th>CONCEPTO</th>
+<th>CARGO</th>
+<th>ABONO</th>
+</tr>
+
+<tr><td>HOSPEDAJE</td><td>{{ comp_hospedaje_cargo }}</td><td>{{ comp_hospedaje_abono }}</td></tr>
+<tr><td>ALIMENTOS</td><td>{{ comp_alimentos_cargo }}</td><td>{{ comp_alimentos_abono }}</td></tr>
+<tr><td>PASAJES</td><td>{{ comp_pasajes_cargo }}</td><td>{{ comp_pasajes_abono }}</td></tr>
+<tr><td>COMBUSTIBLE</td><td>{{ comp_combustible_cargo }}</td><td>{{ comp_combustible_abono }}</td></tr>
+<tr><td>OTROS</td><td>{{ comp_otros_cargo }}</td><td>{{ comp_otros_abono }}</td></tr>
+
+<tr><td><b>SUMAS</b></td><td>{{ suma_cargos }}</td><td>{{ suma_abonos }}</td></tr>
+<tr><td>SALDO</td><td></td><td></td></tr>
+<tr><td>BOLETO AVIÓN</td><td></td><td></td></tr>
+<tr><td><b>SUMA FINAL</b></td><td>{{ importe_total_comprobacion }}</td><td></td></tr>
+</table>
+
+<table class="tbl tbl-thick" style="margin-top:6px;">
+<tr>
+<th>ELABORÓ</th>
+<th>REVISÓ</th>
+<th>CONFORME</th>
+</tr>
+<tr style="height:90px;">
+<td>{{ elaboro_nombre }}<br>{{ elaboro_cargo }}</td>
+<td>{{ reviso_nombre }}<br>{{ reviso_cargo }}</td>
+<td>{{ conforme_nombre }}<br>{{ conforme_cargo }}</td>
+</tr>
+</table>
+
+<div class="double-line">
+RECIBO A LA TESORERÍA DEL INSTITUTO MEXICANO DEL SEGURO SOCIAL 
+</div>
+
+
+<div class="box-thick">
+                                                     BUENO POR $ {{ bueno_por_monto if bueno_por_monto else "________" }}<br><br>
+    RECIBÍ  LA CANTIDAD DE$ {{ recibi_monto if recibi_monto else "________" }}{{ recibi_letras if recibi_letras else "____________________" }}<br>
+    POR CONCEPTO DE SALDO A MI FAVOR COMO RESULTADO DE LA LIQUIDACION POR COMRPOBACION DE LA COMISION EFECTUADA
+</div>
+
+
+<table class="tbl tbl-thick">
+<tr>
+<th width="40%">AUTORIZA PAGO SALDO</th>
+<th>FIRMA EMPLEADO COMISIONADO</th>
+</tr>
+<tr style="height:90px;">
+<td>{{ autoriza_pago_saldo_nombre }}<br>{{ autoriza_pago_saldo_cargo }}</td>
+<td>{{ nombre_empleado }}</td>
+</tr>
+</table>
+
+<div style="text-align:right; font-size:11px;">
+1270-009-037
+</div>
+
+</div>
+<!--fin del pliego-->
+
+</body>
+</html>

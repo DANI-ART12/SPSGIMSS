@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+    /* Configuración de la página para impresión */
+    @page {
+        size: letter;
+        margin: 1.5cm; /* Márgenes fijos en todos los lados */
+    }
+
+    html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
+
+    body { 
+        font-family: Arial, sans-serif; 
+        font-size: 10.5px; 
+        line-height: 1.3; 
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Contenedor principal que ocupa todo el espacio disponible */
+    .content-wrapper {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Encabezado */
+    .header { 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        margin-bottom: 10px; 
+    }
+    
+    .title { 
+        text-align: center; 
+        font-weight: bold; 
+        font-size: 14px; 
+        flex-grow: 1; 
+    }
+    
+    .folio-box { 
+        border: 2px solid black; 
+        width: 180px; 
+        padding: 5px; 
+        text-align: center; 
+    }
+    
+    /* Tablas */
+    .section-table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        margin: 5px 0; 
+        border: 2px solid black; 
+    }
+    
+    .section-table td { 
+        border: 1px solid black; 
+        padding: 6px; 
+        vertical-align: top; 
+    }
+    
+    .label { 
+        font-weight: bold; 
+        text-transform: uppercase; 
+        font-size: 9px; 
+    }
+    
+    /* Contenedor principal que crece */
+    .main-container { 
+        border: 2px solid black; 
+        margin: 8px 0;
+        flex: 1; /* Ocupa el espacio disponible */
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .row-border { 
+        border-bottom: 2px solid black; 
+        padding: 8px; 
+        flex: 1; /* Cada fila se distribuye */
+    }
+    
+    /* Sección de firmas (siempre al final) */
+    .firma-section { 
+        margin-top: 15px; 
+        border: 2px solid black; 
+        padding: 15px; 
+        flex-shrink: 0; /* No se encoge */
+    }
+
+    .clavelinf { 
+        text-align: right; 
+        font-size: 8px; 
+        margin-top: 5px;
+    }
+
+    /* Forzar colores para impresión */
+    @media print {
+        body { 
+            -webkit-print-color-adjust: exact; 
+            print-color-adjust: exact;
+        }
+    }
+
+    /* RESET DE COLORES */
+    body, .header, .main-container, .section-table, .row-border, 
+    .firma-section, .folio-box {
+        background-color: #FFFFFF !important;
+        color: #000000 !important;
+    }
+    table, tr, td, div, p, span, .label {
+        color: #000000 !important;
+    }
+
+    /* Utilidades */
+    .mt-1 { margin-top: 5px; }
+    .mt-2 { margin-top: 10px; }
+    .mb-1 { margin-bottom: 5px; }
+    .mb-2 { margin-bottom: 10px; }
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+    .flex-grow { flex: 1; }
+</style>
+</head>
+<body>
+    <div class="header">
+        <img src="data:image/png;base64,{{ logo_base64 }}" width="90">
+        <div class="title">INFORME DE COMISIÓN</div>
+        <div class="folio-box">
+            <span class="label">NÚMERO DE PLIEGO</span><br>
+            <span style="font-size: 12px;">{{num_pliego}}</span>
+        </div>
+    </div>
+
+    <div style="margin-top: 10px;">
+        <span class="label">FOLIO:</span><br>
+        <div style="text-align: right;">Oaxaca, oaxaca a {{dia_hoy}} de {{mes_hoy}} 2026</div>
+    </div>
+
+    <div style="margin-top: 5px;">
+        <span class="label">Titular de la unidad administrativa</span><br>
+        <span class="label">{{ titular_unidad }}</span><br>
+    <span class="label">Unidad administrativa: </span><br>
+    <span class="label">{{ unidad_administrativa }}</span>
+    </div>
+
+    <div class="main-container">
+        <div class="row-border"><span class="label">ADSCRIPCIÓN:</span> {{adscripcion}}</div>
+        
+        <table class="section-table" style="border: none; border-bottom: 2px solid black;">
+            <tr>
+                <td width="60%"><span class="label">LUGAR DE LA COMISIÓN:</span> {{lugar_comision}}</td>
+                <td><span class="label">DEL:</span> {{fecha_inicio}}</td>
+                <td><span class="label">AL:</span> {{fecha_fin}}</td>
+            </tr>
+        </table>
+
+        <div class="row-border"><span class="label">OBJETO DE LA COMISIÓN:</span> {{objeto_comision}}</div>
+
+        <div class="row-border">
+            <span class="label">1. PROPÓSITO DE LA COMISIÓN</span><br><br>
+            TRASLADO DE PACIENTE: {{paciente}}<br>
+            EN AMBULANCIA No. ECCO: {{ecco}}<br>
+            No CAMA: {{cama}}<br>
+            DIRECCION: {{direccion_destino}}
+        </div>
+
+        <div class="row-border">
+            <span class="label">2. ACTIVIDADES REALIZADAS</span><br><br>
+            TRASLADO A ( LUGAR(ES) DE COMISION) SALIENDO DEL H.G.Z.No.1 OAXACA A LAS {{hora_salida}}<br>
+            DEL DIA {{fecha_salida}}, CON UN KILOMETRAJE INICIAL DE {{km_inicial}}<br>
+            LLEGANDO A LAS {{hora_llegada_destino}} HRS<br>
+            LLEGANDO NUEVAMENTE AL HGZ 1 OAXACA A LAS {{hora_regreso_hgz}} CON UN TOTAL DE {{km_total_recorrido}} KILOMETRAJES RECORRIDOS
+        </div>
+
+        <div class="row-border">
+            <span class="label">3. RESULTADOS OBTENIDOS</span><br><br>
+            <div style="text-align: center;">{{resultados}}</div>
+        </div>
+
+        <div class="row-border" style="border-bottom: none;">
+            <span class="label">4. CONTRIBUCIONES PARA LA DEPENDENCIA</span><br><br>
+            <div style="text-align: center;">{{contribuciones}}</div>
+        </div>
+    </div>
+
+    <div class="firma-section">
+        "Declaro bajo protesta de decir verdad, que los datos contenidos en este informe son verídicos, y manifiesto tener conocimiento de las sanciones que se aplicarán en caso contrario"<br><br><br><br>
+        
+        <table style="width: 100%; border: none;">
+            <tr>
+                <td style="border: none;">CATEGORIA: {{categoria_user}}</td>
+                <td style="border: none;">MATRICULA: {{matricula_user}}</td>
+            </tr>
+        </table>
+        <br>
+        _______________{{nombre_empleado}}____<br>
+       
+        Nombre y firma del comisionado
+        
+        
+    </div>
+     <div class="clavelinf">CLAVE : 1000-009-013</div>
+</body>
+</html>

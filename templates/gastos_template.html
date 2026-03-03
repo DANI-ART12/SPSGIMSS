@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        /* ======================================== */
+        /* ESTILOS PARA DESGLOSE DE GASTOS          */
+        /* ======================================== */
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 9pt;
+            line-height: 1.2;
+            margin: 0;
+            padding: 0;
+            background-color: #FFFFFF;
+            color: #000000;
+        }
+
+        .printable-container {
+            max-width: 21.59cm;
+            margin: 0 auto;
+            background-color: #FFFFFF;
+            padding: 0.5cm;
+        }
+
+        /* Botón de impresión (solo en pantalla) */
+        .print-button-container {
+            display: flex;
+            justify-content: flex-end;
+            padding: 10px;
+            background-color: #f3f4f6;
+            border-bottom: 1px solid #d1d5db;
+        }
+        .print-button-container button {
+            background-color: #1e3a8a;
+            color: white;
+            padding: 8px 20px;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 10pt;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .print-button-container button:hover {
+            background-color: #1e40af;
+        }
+
+        /* Saltos de página */
+        .page-break {
+            page-break-after: always;
+        }
+
+        /* Encabezado */
+        .header {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+        .header img {
+            width: 80px;
+            height: auto;
+        }
+        .header-title {
+            flex-grow: 1;
+            text-align: center;
+            padding-right: 40px;
+        }
+        .header-title h1 {
+            font-weight: bold;
+            font-size: 12pt;
+            margin: 0;
+        }
+        .header-title h2 {
+            font-weight: bold;
+            font-size: 10pt;
+            margin: 4px 0 0 0;
+        }
+        .header-title p {
+            font-weight: bold;
+            margin: 4px 0 0 0;
+        }
+
+        /* Texto a la derecha */
+        .text-right {
+            text-align: right;
+            padding: 0 16px;
+            margin-bottom: 4px;
+        }
+        .font-bold {
+            font-weight: bold;
+        }
+        .uppercase {
+            text-transform: uppercase;
+        }
+        .italic {
+            font-style: italic;
+        }
+
+        /* Bordes y contenedores */
+        .border-2 {
+            border: 2px solid #000000;
+        }
+        .border-black {
+            border-color: #000000;
+        }
+        .border-b {
+            border-bottom: 2px solid #000000;
+        }
+        .border-t {
+            border-top: 2px solid #000000;
+        }
+        .border-l-2 {
+            border-left: 2px solid #000000;
+        }
+        .rounded-2xl {
+            border-radius: 1.5rem;
+        }
+
+        /* Espaciado */
+        .p-3 { padding: 12px; }
+        .p-4 { padding: 16px; }
+        .px-2 { padding-left: 8px; padding-right: 8px; }
+        .px-4 { padding-left: 16px; padding-right: 16px; }
+        .py-0\.5 { padding-top: 2px; padding-bottom: 2px; }
+        .py-1 { padding-top: 4px; padding-bottom: 4px; }
+        .mt-2 { margin-top: 8px; }
+        .mt-4 { margin-top: 16px; }
+        .mt-6 { margin-top: 24px; }
+        .mb-1 { margin-bottom: 4px; }
+        .mb-2 { margin-bottom: 8px; }
+        .mb-4 { margin-bottom: 16px; }
+        .mb-6 { margin-bottom: 24px; }
+        .ml-1 { margin-left: 4px; }
+        .ml-4 { margin-left: 16px; }
+        .mr-2 { margin-right: 8px; }
+        .mt-auto { margin-top: auto; }
+        .pt-6 { padding-top: 24px; }
+        .pb-1 { padding-bottom: 4px; }
+
+        /* Grid simple */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 8px;
+        }
+        .col-span-12 { grid-column: span 12; }
+        .col-span-5 { grid-column: span 5; }
+        .col-span-4 { grid-column: span 4; }
+        .col-span-3 { grid-column: span 3; }
+        .col-span-7 { grid-column: span 7; }
+
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-left { text-align: left; }
+
+        /* Tablas */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #000000;
+        }
+        td {
+            border: 1px solid #000000;
+            padding: 4px;
+            vertical-align: top;
+        }
+        thead td {
+            font-weight: bold;
+            text-align: center;
+            background-color: #FFFFFF;
+        }
+        tbody tr {
+            height: 28px;
+        }
+        .bg-gray-100 {
+            background-color: #f3f4f6;
+        }
+        .bg-gray-200 {
+            background-color: #e5e7eb;
+        }
+        .bg-gray-50 {
+            background-color: #f9fafb;
+        }
+
+        /* Línea de firma */
+        .signature-box {
+            width: 320px;
+            height: 40px;
+            border-bottom: 2px solid #000000;
+            margin-bottom: 4px;
+        }
+
+        /* Texto pequeño */
+        .text-\[7\.5pt\] { font-size: 7.5pt; }
+        .text-\[8pt\] { font-size: 8pt; }
+        .text-\[8\.5pt\] { font-size: 8.5pt; }
+        .text-\[9\.5pt\] { font-size: 9.5pt; }
+        .text-\[11pt\] { font-size: 11pt; }
+
+        /* Ocultar botón en impresión */
+        @media print {
+            .print-button-container {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="printable-container">
+
+        
+
+        <!-- ==================== PÁGINA 1 ==================== -->
+        <div class="page-break">
+
+            <!-- Encabezado -->
+            <div class="header">
+                <img src="data:image/png;base64,{{ logo_base64 }}" alt="IMSS">
+                <div class="header-title">
+                    <h1>INSTITUTO MEXICANO DEL SEGURO SOCIAL</h1>
+                    <h2>DESGLOSE PORMENORIZADO DE GASTOS</h2>
+                    <p>PLIEGO DE COMISIÓN No.: {{ folio }}</p>
+                </div>
+            </div>
+
+            <!-- Lugar y fecha -->
+            <div class="text-right">
+                <span class="font-bold uppercase">Lugar y Fecha:</span>
+                <span>OAXACA, {{ fecha_emision }}</span>
+            </div>
+
+            <!-- Datos generales -->
+            <div class="border-2 border-black rounded-2xl p-3">
+                <div class="text-center font-bold border-b border-black pb-1 mb-2">
+                    DATOS GENERALES
+                </div>
+                <div class="grid">
+                    <div class="col-span-12">
+                        <span class="font-bold uppercase">Comisionado:</span> {{ comisionado }}
+                    </div>
+                    <div class="col-span-5">
+                        <span class="font-bold uppercase">Destino de Comisión:</span> {{ destino }}
+                    </div>
+                    <div class="col-span-4 text-center">
+                        <span class="font-bold uppercase">Matrícula:</span> {{ matricula }}
+                    </div>
+                    <div class="col-span-3 text-right">
+                        <span class="font-bold uppercase">T.C.:</span> {{ tipo_contrato }}
+                    </div>
+                    <div class="col-span-7">
+                        <span class="font-bold uppercase">Medio de Transporte:</span> {{ transporte }}
+                    </div>
+                    <div class="col-span-5 text-right font-bold italic">
+                        DEL {{ fecha_inicio }} AL {{ fecha_fin }}
+                        <span class="ml-4 uppercase">Días: {{ total_dias }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tablas de gastos (página 1) -->
+            <div>
+                {% for categoria in categorias_primera_pagina %}
+                <div class="mt-4">
+                    <div class="bg-gray-100 border-2 border-black font-bold px-4 py-0.5 border-b-0">{{ categoria.nombre }}</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <td class="w-1/5">No. Factura</td>
+                                <td class="w-2/5">Proveedor</td>
+                                <td class="w-1/5">Fecha</td>
+                                <td class="w-1/5">Importe</td>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for gasto in categoria.gastos %}
+                            <tr>
+                                <td>{{ gasto.factura }}</td>
+                                <td>{{ gasto.proveedor }}</td>
+                                <td>{{ gasto.fecha }}</td>
+                                <td class="text-right">${{ "%.2f"|format(gasto.importe) }}</td>
+                            </tr>
+                            {% endfor %}
+                            <!-- Filas vacías para completar (opcional) -->
+                            {% for i in range(3 - categoria.gastos|length) %}
+                            <tr><td></td><td></td><td></td><td></td></tr>
+                            {% endfor %}
+                            <tr class="font-bold border-t border-black">
+                                <td colspan="3" class="text-right pr-4 uppercase">Subtotal</td>
+                                <td class="border-l-2 border-black text-right px-2">${{ "%.2f"|format(categoria.subtotal) }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- ==================== PÁGINA 2 ==================== -->
+        <div class="page-break">
+
+            <!-- Tablas de gastos (página 2) -->
+            <div>
+                {% for categoria in categorias_segunda_pagina %}
+                <div class="mt-4">
+                    <div class="bg-gray-100 border-2 border-black font-bold px-4 py-0.5 border-b-0 uppercase">{{ categoria.nombre }}</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <td class="w-1/5">No. Factura</td>
+                                <td class="w-2/5">Proveedor</td>
+                                <td class="w-1/5">Fecha</td>
+                                <td class="w-1/5">Importe</td>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for gasto in categoria.gastos %}
+                            <tr>
+                                <td>{{ gasto.factura }}</td>
+                                <td>{{ gasto.proveedor }}</td>
+                                <td>{{ gasto.fecha }}</td>
+                                <td class="text-right">${{ "%.2f"|format(gasto.importe) }}</td>
+                            </tr>
+                            {% endfor %}
+                            {% for i in range(2 - categoria.gastos|length) %}
+                            <tr><td></td><td></td><td></td><td></td></tr>
+                            {% endfor %}
+                            <tr class="font-bold border-t border-black">
+                                <td colspan="3" class="text-right pr-4 uppercase">Subtotal</td>
+                                <td class="border-l-2 border-black text-right px-2">${{ "%.2f"|format(categoria.subtotal) }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Gastos sin comprobante -->
+            <div class="mt-4">
+                <div class="bg-gray-100 border-2 border-black font-bold px-4 py-0.5 border-b-0 uppercase">Gastos sin Comprobante</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <td class="w-1/5">Concepto</td>
+                            <td class="w-2/5">Justificación</td>
+                            <td class="w-1/5">Fecha</td>
+                            <td class="w-1/5">Importe</td>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for gasto in gastos_sin_comprobante %}
+                        <tr>
+                            <td>{{ gasto.concepto }}</td>
+                            <td>{{ gasto.justificacion }}</td>
+                            <td>{{ gasto.fecha }}</td>
+                            <td class="text-right">${{ "%.2f"|format(gasto.importe) }}</td>
+                        </tr>
+                        {% endfor %}
+                        {% for i in range(1 - gastos_sin_comprobante|length) %}
+                        <tr><td></td><td></td><td></td><td></td></tr>
+                        {% endfor %}
+                        <tr>
+                            <td colspan="3" class="text-right pr-4 font-bold bg-gray-50 uppercase">Subtotal</td>
+                            <td class="border-l-2 border-black text-right px-2 font-bold">${{ "%.2f"|format(subtotal_sin_comprobante) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Total general -->
+            <div class="flex justify-center mt-6">
+                <div style="width: 60%; border: 2px solid #000000;">
+                    <div class="text-center font-bold border-b-2 border-black py-0.5 uppercase">Total del Gasto a Comprobar</div>
+                    <div class="bg-gray-200 h-10 flex items-center justify-center text-[11pt] font-bold italic">
+                        ${{ "%.2f"|format(total_general) }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Firma y declaración -->
+            <div class="mt-5 pt-5">
+                <div style="display: flex; flex-direction: column; align-items: flex-start; margin-left: 16px; margin-bottom: 16px;">
+                    <div class="signature-box"></div>
+                    <p class="font-bold uppercase text-center italic" style="width: 320px;">Nombre y Firma del Comisionado{{nombre_empleado}}</p>
+                </div>
+
+                <div class="text-justify px-2 mb-5 italic" style="font-size: 9.5pt;">
+                    "Declaro bajo protesta de decir verdad que los importes registrados en el presente documento fueron efectivamente erogados durante el periodo de comisión y manifiesto tener conocimiento de las sanciones previstas en las leyes correspondientes que se aplican"
+                </div>
+
+                <div class="text-right font-bold">Clave: 1000-009-010</div>
+            </div>
+
+        </div>
+
+    </div>
+</body>
+</html>

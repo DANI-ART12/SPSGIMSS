@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+pythonenv*
+*.pyc
+
+# Base de datos (opcional - comentar si quieres subir el Excel)
+base_datos.xlsx
+config_sistema.json
+
+# Streamlit
+.streamlit/
+
+# Scripts auxiliares
+buscar_*.py
+reparar_excel.py
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
