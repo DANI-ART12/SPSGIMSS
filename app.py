@@ -236,19 +236,6 @@ st.session_state.modo_claro = modo
 st.sidebar.divider()
 
 # ============================================
-# CONFIGURACIÓN INICIAL DE FOLIOS (SI ES PRIMERA VEZ)
-# ============================================
-if u['rol'] == "Administrador" and primera_vez:
-    st.warning("⚠️ Es la primera vez que ejecutas el sistema. Configura los folios iniciales.")
-    configurar_folios_iniciales()
-    st.stop()
-
-# OPCIÓN DE CONFIGURACIÓN DE FOLIOS EN MENÚ
-if u['rol'] == "Administrador" and st.sidebar.button("⚙️ Configurar Folios", use_container_width="stretch"):
-    configurar_folios_iniciales()
-    st.stop()
-
-# ============================================
 # MENÚ PRINCIPAL (REESTRUCTURADO)
 # ============================================
 opciones_menu = []
