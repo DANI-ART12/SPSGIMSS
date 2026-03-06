@@ -87,12 +87,13 @@ def obtener_traslados_locales():
         return pd.DataFrame()
 
 # ============================================
-# FUNCIONES DE GUARDADO/ACTUALIZACIÓN
+# FUNCIONES DE GUARDADO/ACTUALIZACIÓN (VERSIÓN ÚNICA)
 # ============================================
 
 def guardar_o_actualizar_pliego(datos):
     """
     Guarda o actualiza un pliego en el Excel
+    🔴 AHORA ACTUALIZA si el folio existe
     """
     try:
         if not os.path.exists(DB_FILE):
@@ -111,8 +112,25 @@ def guardar_o_actualizar_pliego(datos):
             if sheet != 'pliegos':
                 otras_hojas[sheet] = pd.read_excel(xls, sheet)
         
-        # Agregar nuevo pliego
-        df_p = pd.concat([df_p, pd.DataFrame([datos])], ignore_index=True)
+        # Verificar si el folio ya existe
+        folio = datos.get('folio', '')
+        if folio in df_p['folio'].values:
+            # ACTUALIZAR registro existente
+            idx = df_p[df_p['folio'] == folio].index[0]
+            
+            # 🔴 Asegurar que todas las columnas existan antes de actualizar
+            for key in datos.keys():
+                if key not in df_p.columns:
+                    df_p[key] = ""  # Agregar columna vacía si no existe
+            
+            for key, value in datos.items():
+                if key in df_p.columns:
+                    df_p.at[idx, key] = value
+            print(f"✅ Pliego {folio} actualizado")
+        else:
+            # Agregar nuevo registro
+            df_p = pd.concat([df_p, pd.DataFrame([datos])], ignore_index=True)
+            print(f"✅ Pliego {folio} guardado")
         
         # Guardar todo
         with pd.ExcelWriter(DB_FILE, engine='openpyxl') as writer:
@@ -127,7 +145,8 @@ def guardar_o_actualizar_pliego(datos):
 
 def guardar_traslado_local(datos):
     """
-    Guarda un nuevo traslado local
+    Guarda o actualiza un traslado local
+    🔴 AHORA incluye todos los campos nuevos
     """
     try:
         if not os.path.exists(DB_FILE):
@@ -146,8 +165,25 @@ def guardar_traslado_local(datos):
             if sheet != 'traslados_locales':
                 otras_hojas[sheet] = pd.read_excel(xls, sheet)
         
-        # Agregar nuevo traslado
-        df_t = pd.concat([df_t, pd.DataFrame([datos])], ignore_index=True)
+        # Verificar si el folio ya existe
+        folio = datos.get('folio', '')
+        if folio in df_t['folio'].values:
+            # ACTUALIZAR registro existente
+            idx = df_t[df_t['folio'] == folio].index[0]
+            
+            # 🔴 Asegurar que todas las columnas existan antes de actualizar
+            for key in datos.keys():
+                if key not in df_t.columns:
+                    df_t[key] = ""  # Agregar columna vacía si no existe
+            
+            for key, value in datos.items():
+                if key in df_t.columns:
+                    df_t.at[idx, key] = value
+            print(f"✅ Traslado {folio} actualizado")
+        else:
+            # Agregar nuevo registro con todos los campos
+            df_t = pd.concat([df_t, pd.DataFrame([datos])], ignore_index=True)
+            print(f"✅ Traslado {folio} guardado")
         
         # Guardar todo
         with pd.ExcelWriter(DB_FILE, engine='openpyxl') as writer:
@@ -159,6 +195,12 @@ def guardar_traslado_local(datos):
     except Exception as e:
         print(f"Error al guardar traslado: {e}")
         return False
+
+def actualizar_traslado_local(datos):
+    """
+    🔴 Alias para guardar_traslado_local (para tomar/cerrar)
+    """
+    return guardar_traslado_local(datos)
 
 def actualizar_km_vehiculo(ecco_unidad, km_final_reportado):
     """
@@ -194,21 +236,104 @@ def actualizar_km_vehiculo(ecco_unidad, km_final_reportado):
         print(f"Error al actualizar kilometraje: {e}")
         return False
 
-def actualizar_base_datos_maestra(df_editado):
+def actualizar_base_datos_maestra(df_editado, tipo_doc=None):
     """
-    Actualiza la base de datos con los cambios del editor
+    🔴 Actualiza la base de datos con los cambios del editor
+    NO crea duplicados - actualiza los registros existentes
     """
     try:
-        # TODO: Implementar según necesidad
-        print("Función de actualización en desarrollo")
+        if not os.path.exists(DB_FILE):
+            asegurar_hojas_excel()
+            return False
+        
+        if df_editado.empty:
+            return True
+        
+        xls = pd.ExcelFile(DB_FILE)
+        
+        # Determinar qué hoja actualizar
+        if 'tipo_doc' in df_editado.columns:
+            if df_editado['tipo_doc'].iloc[0] == "Pliego/Informe":
+                hoja = 'pliegos'
+            else:
+                hoja = 'traslados_locales'
+        else:
+            # Intentar determinar por columnas
+            if 'paciente' in df_editado.columns:
+                hoja = 'traslados_locales'
+            else:
+                hoja = 'pliegos'
+        
+        # Leer la hoja correspondiente
+        if hoja in xls.sheet_names:
+            df_original = pd.read_excel(xls, sheet_name=hoja)
+        else:
+            df_original = pd.DataFrame()
+        
+        # Guardar otras hojas
+        otras_hojas = {}
+        for sheet in xls.sheet_names:
+            if sheet != hoja:
+                otras_hojas[sheet] = pd.read_excel(xls, sheet)
+        
+        # Actualizar registros existentes
+        for idx, row in df_editado.iterrows():
+            folio = row.get('folio', '')
+            if folio and folio in df_original['folio'].values:
+                # Encontrar el índice en el original
+                orig_idx = df_original[df_original['folio'] == folio].index[0]
+                # Actualizar campos
+                for col in row.index:
+                    if col in df_original.columns and col != 'folio':
+                        df_original.at[orig_idx, col] = row[col]
+        
+        # Guardar todo
+        with pd.ExcelWriter(DB_FILE, engine='openpyxl') as writer:
+            df_original.to_excel(writer, sheet_name=hoja, index=False)
+            for nombre, df in otras_hojas.items():
+                df.to_excel(writer, sheet_name=nombre, index=False)
+        
+        print(f"✅ Base de datos actualizada en hoja {hoja}")
         return True
     except Exception as e:
         print(f"Error al actualizar: {e}")
         return False
 
 # ============================================
-# FUNCIONES DE CONFIGURACIÓN
+# FUNCIONES DE CONFIGURACIÓN ADMIN
 # ============================================
+
+def obtener_configuracion_admin():
+    """
+    Obtiene la configuración administrativa
+    """
+    try:
+        if os.path.exists(DB_FILE):
+            xls = pd.ExcelFile(DB_FILE)
+            if 'config_admin' in xls.sheet_names:
+                df = pd.read_excel(xls, sheet_name='config_admin')
+                if not df.empty:
+                    return df.iloc[0].to_dict()
+        
+        # Valores por defecto si no existe
+        return {
+            'titular_unidad': '',
+            'unidad_administrativa': '',
+            'adscripcion': '',
+            'cargo_titular': '',
+            'folio_inicial_sistema': 'F001/2026',
+            'folio_inicial_local': 'L001/2026'
+        }
+    except Exception as e:
+        print(f"Error al obtener configuración: {e}")
+        return {
+            'titular_unidad': '',
+            'unidad_administrativa': '',
+            'adscripcion': '',
+            'cargo_titular': '',
+            'folio_inicial_sistema': 'F001/2026',
+            'folio_inicial_local': 'L001/2026'
+        }
 
 def guardar_configuracion_admin(config):
     """
@@ -227,46 +352,26 @@ def guardar_configuracion_admin(config):
         # Crear DataFrame con nueva configuración
         df_conf = pd.DataFrame([config])
         
+        # Guardar
         with pd.ExcelWriter(DB_FILE, engine='openpyxl') as writer:
             df_conf.to_excel(writer, sheet_name='config_admin', index=False)
             for nombre, df in otras_hojas.items():
                 df.to_excel(writer, sheet_name=nombre, index=False)
         
+        print(f"✅ Configuración guardada exitosamente")
         return True
     except Exception as e:
-        print(f"Error al guardar configuración: {e}")
-        return False
+        print(f"❌ Error al guardar configuración: {e}")
+        return False        
 
-def obtener_configuracion_admin():
-    """
-    Obtiene la configuración administrativa
-    """
-    try:
-        if os.path.exists(DB_FILE):
-            xls = pd.ExcelFile(DB_FILE)
-            if 'config_admin' in xls.sheet_names:
-                df = pd.read_excel(xls, sheet_name='config_admin')
-                if not df.empty:
-                    return df.iloc[0].to_dict()
-        return {}
-    except Exception as e:
-        print(f"Error al obtener configuración: {e}")
-        return {}
 
 # ============================================
-# NUEVA FUNCIÓN: GUARDAR GASTOS (DESGLOSE)
+# FUNCIÓN: GUARDAR GASTOS (DESGLOSE)
 # ============================================
 
 def guardar_gastos(datos_gastos, folio_pliego):
     """
     Guarda los gastos del desglose en la hoja 'gastos' de Excel.
-    
-    Args:
-        datos_gastos (dict): Diccionario con los gastos por categoría
-        folio_pliego (str): Folio del pliego al que pertenecen los gastos
-    
-    Returns:
-        bool: True si se guardó correctamente, False en caso de error
     """
     try:
         if not os.path.exists(DB_FILE):
@@ -291,7 +396,6 @@ def guardar_gastos(datos_gastos, folio_pliego):
         
         for categoria, gastos in datos_gastos.items():
             for gasto in gastos:
-                # Determinar tipo de gasto
                 tipo = "con_comprobante" if categoria != "SIN COMPROBANTE" else "sin_comprobante"
                 
                 nuevo_registro = {
@@ -307,12 +411,10 @@ def guardar_gastos(datos_gastos, folio_pliego):
                 }
                 nuevos_registros.append(nuevo_registro)
         
-        # Si hay registros nuevos, agregarlos al DataFrame
         if nuevos_registros:
             df_nuevos = pd.DataFrame(nuevos_registros)
             df_gastos = pd.concat([df_gastos, df_nuevos], ignore_index=True)
         
-        # Guardar todo en Excel
         with pd.ExcelWriter(DB_FILE, engine='openpyxl') as writer:
             df_gastos.to_excel(writer, sheet_name='gastos', index=False)
             for nombre, df in otras_hojas.items():

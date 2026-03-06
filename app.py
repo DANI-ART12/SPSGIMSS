@@ -1,12 +1,13 @@
 # ============================================
-# app.py - VERSIÓN CORREGIDA Y REORDENADA
+# app.py - VERSIÓN CORREGIDA CON NUEVAS VISTAS
 # ============================================
 
 import streamlit as st
 import pandas as pd
 from PIL import Image
 import io
-import os 
+import os
+from datetime import datetime, timedelta
 
 # ============================================
 # IMPORTACIONES CORRECTAS DESDE CADA MÓDULO
@@ -22,11 +23,13 @@ from modules.db_handler import (
     guardar_o_actualizar_pliego,
     actualizar_km_vehiculo,
     actualizar_base_datos_maestra,
-    obtener_lista_usuarios
+    obtener_lista_usuarios,
+    obtener_vehiculos  # ← AGREGADO
 )
 from modules.forms import (
     vista_pliego,
-    vista_traslados,
+    vista_traslados_dia,           # ← NUEVA
+    vista_traslados_programados,    # ← NUEVA
     vista_historial_maestro,
     vista_estadisticas_admin,
     vista_informe_comision,
@@ -39,8 +42,8 @@ from modules.forms import (
 print("✅ Funciones importadas correctamente:")
 print("   - database: inicializar_base_datos, validar_login")
 print("   - utils: generar_folio_local, gestionar_config_permanente, get_base64")
-print("   - db_handler: guardar_o_actualizar_pliego, actualizar_km_vehiculo, etc.")
-print("   - forms: todas las vistas")
+print("   - db_handler: guardar_o_actualizar_pliego, actualizar_km_vehiculo, obtener_vehiculos")
+print("   - forms: todas las vistas (incluyendo nuevas)")
 
 # ============================================
 # CONFIGURACIÓN INICIAL DE LA PÁGINA
@@ -62,6 +65,9 @@ if "autenticado" not in st.session_state:
     
 if "user_data" not in st.session_state:
     st.session_state.user_data = {}
+
+if "traslados_seleccionados" not in st.session_state:
+    st.session_state.traslados_seleccionados = []
 
 # ============================================
 # VERIFICAR CONFIGURACIÓN DE FOLIOS
@@ -120,11 +126,9 @@ def configurar_folios_iniciales():
 if not st.session_state.autenticado:
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Dos columnas: izquierda (formulario) y derecha (carrusel)
     col_izq, col_der = st.columns(2)
     
     with col_izq:
-        # Logo centrado
         col_logo1, col_logo2, col_logo3 = st.columns([1, 2, 1])
         with col_logo2:
             try:
@@ -133,15 +137,12 @@ if not st.session_state.autenticado:
             except:
                 st.warning("Logo no encontrado")
         
-        # Título centrado
         st.markdown("<h2 style='text-align:center; margin:20px 0;'>SISTEMA IMSS</h2>", unsafe_allow_html=True)
         
-        # Formulario (ocupando todo el ancho)
         with st.form("login_form"):
             matricula = st.text_input("MATRÍCULA", placeholder="Ingrese su matrícula")
             password = st.text_input("CONTRASEÑA", type="password", placeholder="Ingrese su contraseña")
             
-            # Botón centrado
             col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
             with col_btn2:
                 if st.form_submit_button("🔐 ENTRAR", use_container_width=True):
@@ -248,12 +249,12 @@ if u['rol'] == "Administrador" and st.sidebar.button("⚙️ Configurar Folios",
     st.stop()
 
 # ============================================
-# MENÚ PRINCIPAL (ORDENADO)
+# MENÚ PRINCIPAL (REESTRUCTURADO)
 # ============================================
 opciones_menu = []
 
 # Opciones para todos los usuarios
-opciones_menu.append("🚑 Traslados Locales")
+opciones_menu.append("🚑 Traslados del Día (HOY)")
 opciones_menu.append("📋 Pliego Comisión (FORÁNEOS)")
 opciones_menu.append("📝 Informe Comisión")
 opciones_menu.append("🧾 Desglose de Gastos")
@@ -261,6 +262,7 @@ opciones_menu.append("📊 Historial Pliegos e Informes")
 
 # Opciones solo para administradores
 if u['rol'] == "Administrador":
+    opciones_menu.append("📅 Traslados Programados")  # ← NUEVA (solo admin)
     opciones_menu.append("👥 Historial Pacientes")
     opciones_menu.append("📈 Estadísticas Admin")
     opciones_menu.append("⚙️ Configuración")
@@ -425,20 +427,23 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================
-# NAVEGACIÓN SEGÚN OPCIÓN DEL MENÚ
+# NAVEGACIÓN SEGÚN OPCIÓN DEL MENÚ (ACTUALIZADA)
 # ============================================
 try:
     if menu == "🚪 Cerrar sesión":
-        for key in ['autenticado', 'user_data', 'folio_actual', 'pliego_desglose']:
+        for key in ['autenticado', 'user_data', 'folio_actual', 'pliego_desglose', 'traslados_seleccionados','busqueda_actual']:
             if key in st.session_state:
                 del st.session_state[key]
         st.rerun()
     
-    elif menu == "🚑 Traslados Locales":
+    elif menu == "🚑 Traslados del Día (HOY)":
+        vista_traslados_dia(u)  # ← NUEVA - Todos pueden ver
+    
+    elif menu == "📅 Traslados Programados":
         if u['rol'] == "Administrador":
-            vista_traslados(u) 
+            vista_traslados_programados(u)  # ← NUEVA - Solo admin
         else:
-            st.error("🚫 Acceso restringido.")
+            st.error("🚫 Acceso restringido a Administradores")
     
     elif menu == "📋 Pliego Comisión (FORÁNEOS)":
         vista_pliego(u)

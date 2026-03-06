@@ -281,7 +281,7 @@ Lugar y fecha:<br>
 </tr>
 
 <tr>
-<td>PUESTO:<span class="dato-destacado">{{ f_categoria }}</span></td>
+<td>PUESTO:<span class="dato-destacado">{{ categoria_empleado }}</span></td>
 <td>TC <span class="dato-destacado">{{ tipo_contrato }}</span> &nbsp;&nbsp; TEL OFICINA {{ f_tel }}</td>
 </tr>
 
@@ -289,13 +289,13 @@ Lugar y fecha:<br>
 
 <tr>
 <td colspan="2">
-OBJETO DE LA COMISIÓN:<br>
-{{ m_objeto }}
+OBJETO DE LA COMISIÓN:{{ m_objeto }}{{m_paciente}}{{nss}}<br>
+
 </td>
 </tr>
 
 <tr>
-<td>DESTINO DE LA COMISIÓN {{ m_destino }} DEL {{ m_inicio }}</td>
+<td>DESTINO DE LA COMISIÓN {{ m_destino }}                        DEL {{ m_inicio }}</td>
 <td>AL {{ m_fin }}</td>
 </tr>
 
@@ -443,7 +443,7 @@ FECHA: {{ m_fecha_creacion}}
 <div><b>MATRÍCULA:</b> <span class="dato-destacado">{{ matricula }}</span></div>
 <div><b>GRUPO JERÁRQUICO:</b> {{ grupo_jerarquico }}</div>
 
-<div><b>OBJETO DE LA COMISIÓN:</b> {{ m_objeto }}</div>
+<div><b>OBJETO DE LA COMISIÓN:</b> {{ m_objeto }}{{m_paciente}}{{nss}}</div>
 <div></div>
 
 <div><b>PERIODO SOLICITADO:</b> {{ m_inicio }} al {{ m_fin }}</div>

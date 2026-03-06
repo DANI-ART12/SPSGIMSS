@@ -41,7 +41,9 @@ def inicializar_base_datos():
                 "suma_cargos", "suma_abonos",
                 "importe_total_comprobacion",
                 "elaboro_nombre", "reviso_nombre", "bueno_por_monto", "recibi_letras",
-                "mostrar_bloque_especial"
+                "mostrar_bloque_especial",
+                "paciente",  # ← NUEVO CAMPO
+                "nss"        # ← NUEVO CAMPO
             ]),
 
             "informes": pd.DataFrame(columns=[
@@ -65,9 +67,30 @@ def inicializar_base_datos():
             ]),  
 
             "traslados_locales": pd.DataFrame(columns=[
-                "folio", "fecha_creacion", "paciente", "nss", "fecha_hora", 
-                "empleado_comisionado", "destino", "servicio", "cama", "requiere",
-                "estatus", "observaciones", "matricula_admin"
+                "folio", 
+                "fecha_creacion",           
+                "fecha_traslado",           
+                "turno",                    
+                "paciente", 
+                "nss", 
+                "domicilio", 
+                "telefono", 
+                "fecha_hora", 
+                "empleado_comisionado",     
+                "matricula_asignado",       
+                "fecha_asignacion",         
+                "vehiculo",                 
+                "km_inicial",               
+                "km_final",                 
+                "cerrado_por",              
+                "fecha_cierre",             
+                "destino", 
+                "servicio", 
+                "cama", 
+                "requiere",
+                "estatus", 
+                "observaciones", 
+                "matricula_admin"           
             ]),
             
             "mantenimientos": pd.DataFrame(columns=[
@@ -119,9 +142,13 @@ def validar_login(matricula, password):
             row = user.iloc[0]
             return {
                 "matricula": str(row["matricula"]),
-                "nombre": f"{row['nombre']} {row.get('apellido_p', '')}".strip(),
+                "nombre": f"{row['nombre']} {row.get('apellido_p', '')} {row.get('apellido_m', '')}".strip(),
                 "rol": str(row["rol"]),
-                "categoria": str(row.get("categoria", "PERSONAL"))
+                "categoria": str(row.get("categoria", "PERSONAL")),
+                "puesto": str(row.get("puesto", "")),
+                "departamento": str(row.get("departamento", "")),
+                "gj": str(row.get("gj", "")),
+                "tipo_contrato": str(row.get("tipo_contrato", ""))
             }
     except Exception as e:
         print("Error en login:", e)
@@ -148,7 +175,9 @@ def guardar_pliego_completo(datos_usuario, datos_traslado, datos_funcionario):
             "f_tel": datos_funcionario.get('tel_oficina'),
             "matricula": datos_usuario.get('matricula'),
             "fecha_elaboracion": datetime.now().strftime("%d/%m/%Y"),
-            "estatus_pliego": "PENDIENTE"
+            "estatus_pliego": "PENDIENTE",
+            "paciente": datos_traslado.get('paciente', ''),  # ← NUEVO
+            "nss": datos_traslado.get('nss', '')             # ← NUEVO
         }
         
         df_pliegos = pd.concat([df_pliegos, pd.DataFrame([nueva_fila])], ignore_index=True)
