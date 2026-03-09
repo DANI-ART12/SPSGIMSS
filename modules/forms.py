@@ -1194,7 +1194,7 @@ def vista_traslados_dia(u):
         with st.expander("🔍 Buscar por Folio o Paciente", expanded=False):
             col_bus1, col_bus2 = st.columns([3, 1])
             with col_bus1:
-                busqueda = st.text_input("", placeholder="Ingrese folio o nombre del paciente", key="buscador_traslados")
+                busqueda = st.text_input("Buscar", placeholder="Ingrese folio o nombre del paciente", key="buscador_traslados")
             with col_bus2:
                 if st.button("🔍 Buscar", use_container_width=True):
                     st.session_state.busqueda_actual = busqueda
@@ -2026,88 +2026,386 @@ def vista_configuracion_admincompleta(u):
                 except Exception as e:
                     st.error(f"❌ Error en la base de datos: {e}")
 
-# ----------------------------------------------------------------------------
-# VISTA 3.4: ESTADÍSTICAS ADMIN
-# ----------------------------------------------------------------------------
+# ============================================
+# VISTA 3.4: ESTADÍSTICAS ADMIN (VERSIÓN COMPLETA CORREGIDA)
+# ============================================
 def vista_estadisticas_admin(u):
     st.title("📊 Panel de Inteligencia Administrativa")
     
     try:
-        asegurar_hojas_excel()
+        from modules.database import get_connection
+        import plotly.express as px
+        import plotly.graph_objects as go
+        from datetime import datetime, timedelta
+        import pandas as pd
+        import io
+        import base64
         
-        xls = pd.ExcelFile(DB_FILE)
+        conn = get_connection()
         
-        df_p = pd.read_excel(xls, sheet_name='pliegos').fillna("") if 'pliegos' in xls.sheet_names else pd.DataFrame()
-        df_t = pd.read_excel(xls, sheet_name='traslados_locales').fillna("") if 'traslados_locales' in xls.sheet_names else pd.DataFrame()
-        df_v = pd.read_excel(xls, sheet_name='vehiculos').fillna(0) if 'vehiculos' in xls.sheet_names else pd.DataFrame()
+        # ========================================
+        # FILTROS EN EL ÁREA PRINCIPAL
+        # ========================================
+        with st.expander("🔍 FILTROS DE BÚSQUEDA", expanded=True):
+            col_fecha1, col_fecha2, col_mostrar = st.columns([2, 2, 3])
+            
+            with col_fecha1:
+                fecha_desde = st.date_input(
+                    "📅 Desde", 
+                    value=datetime.now() - timedelta(days=30),
+                    key="est_fecha_desde"
+                )
+            
+            with col_fecha2:
+                fecha_hasta = st.date_input(
+                    "📅 Hasta", 
+                    value=datetime.now(),
+                    key="est_fecha_hasta"
+                )
+            
+            with col_mostrar:
+                st.markdown("##### 📌 Mostrar gráficas:")
+                opcion_mostrar = st.radio(
+                    "Selección:",
+                    ["Todas", "Elegir específicas"],
+                    horizontal=True,
+                    key="est_opcion_mostrar",
+                    label_visibility="collapsed"
+                )
+                
+                if opcion_mostrar == "Elegir específicas":
+                    st.markdown("---")
+                    col_chk1, col_chk2, col_chk3 = st.columns(3)
+                    with col_chk1:
+                        mostrar_estatus = st.checkbox("✅ Estatus", value=True, key="chk_estatus")
+                        mostrar_destinos = st.checkbox("📍 Destinos", value=True, key="chk_destinos")
+                        mostrar_tiempo = st.checkbox("📅 Por día", value=True, key="chk_tiempo")
+                    with col_chk2:
+                        mostrar_empleados = st.checkbox("👥 Empleados", value=True, key="chk_empleados")
+                        mostrar_vehiculos = st.checkbox("🚗 Vehículos", value=True, key="chk_vehiculos")
+                        mostrar_gastos = st.checkbox("💰 Gastos", value=True, key="chk_gastos")
+                    with col_chk3:
+                        st.markdown("##### 📥 Exportar")
+                        if st.button("📊 Exportar todo a Excel", use_container_width=True):
+                            exportar_datos_completos(conn)
+                else:
+                    mostrar_estatus = True
+                    mostrar_destinos = True
+                    mostrar_tiempo = True
+                    mostrar_empleados = True
+                    mostrar_vehiculos = True
+                    mostrar_gastos = True
+                    
+                    st.markdown("##### 📥 Exportar")
+                    if st.button("📊 Exportar todo a Excel", use_container_width=True):
+                        exportar_datos_completos(conn)
         
-        otras_hojas = {sh: pd.read_excel(xls, sh) for sh in xls.sheet_names if sh not in ['vehiculos', 'pliegos', 'traslados_locales', 'informes']}
+        # ========================================
+        # LEER DATOS CON FILTRO DE FECHAS
+        # ========================================
         
-        st.subheader("📈 Indicadores de Desempeño")
+        # Convertir fechas a string para SQL
+        fecha_desde_str = fecha_desde.strftime("%Y-%m-%d")
+        fecha_hasta_str = fecha_hasta.strftime("%Y-%m-%d")
         
-        row1_col1, row1_col2 = st.columns(2)
-        with row1_col1:
-            st.markdown("### 1. Traslados Locales")
-            if not df_t.empty and 'estatus' in df_t.columns:
-                estatus_counts = df_t['estatus'].value_counts().reset_index()
-                estatus_counts.columns = ['estatus', 'count']
-                fig1 = px.bar(estatus_counts, x='estatus', y='count', 
-                              color='estatus', title="Distribución por Estatus")
-                st.plotly_chart(fig1, use_container_width=True)
-            else:
-                st.info("No hay datos de traslados")
+        # Leer pliegos (foráneos) con filtro
+        df_p = pd.read_sql_query(
+            "SELECT * FROM pliegos WHERE fecha_elaboracion >= ? AND fecha_elaboracion <= ?",
+            conn, params=[fecha_desde_str, fecha_hasta_str]
+        )
         
-        with row1_col2:
-            st.markdown("### 2. Traslados Foráneos (Pliegos)")
-            if not df_p.empty and 'destino' in df_p.columns:
-                destino_counts = df_p['destino'].value_counts().reset_index()
-                destino_counts.columns = ['destino', 'count']
-                fig2 = px.pie(destino_counts, values='count', names='destino', title="Destinos más frecuentes")
-                st.plotly_chart(fig2, use_container_width=True)
-            else:
-                st.info("No hay datos de pliegos")
+        # Leer traslados locales con filtro
+        df_t = pd.read_sql_query(
+            "SELECT * FROM traslados_locales WHERE fecha_creacion >= ? AND fecha_creacion <= ?",
+            conn, params=[fecha_desde_str, fecha_hasta_str]
+        )
         
-        row2_col1, row2_col2 = st.columns(2)
-        with row2_col1:
-            st.markdown("### 3. Traslados por Día")
-            if not df_t.empty and 'fecha_creacion' in df_t.columns:
-                df_t['fecha'] = pd.to_datetime(df_t['fecha_creacion'], format='%d/%m/%Y', errors='coerce')
-                df_dia = df_t.groupby(df_t['fecha'].dt.date).size().reset_index()
-                df_dia.columns = ['fecha', 'cantidad']
-                fig3 = px.line(df_dia, x='fecha', y='cantidad', title="Traslados por día")
-                st.plotly_chart(fig3, use_container_width=True)
-            else:
-                st.info("Sin datos de fechas")
+        # Leer vehículos (sin filtro de fecha)
+        df_v = pd.read_sql_query("SELECT * FROM vehiculos", conn)
         
-        with row2_col2:
-            st.markdown("### 4. Productividad por Empleado")
-            if not df_t.empty and 'empleado_comisionado' in df_t.columns:
-                emp_counts = df_t['empleado_comisionado'].value_counts().head(10).reset_index()
-                emp_counts.columns = ['empleado', 'cantidad']
-                fig4 = px.bar(emp_counts, x='empleado', y='cantidad', title="Top 10 empleados")
-                st.plotly_chart(fig4, use_container_width=True)
-            else:
-                st.info("Sin datos de empleados")
+        # Leer gastos con filtro
+        df_g = pd.read_sql_query(
+            "SELECT * FROM gastos WHERE fecha >= ? AND fecha <= ?",
+            conn, params=[fecha_desde_str, fecha_hasta_str]
+        )
+        
+        # ========================================
+        # MOSTRAR MÉTRICAS RÁPIDAS
+        # ========================================
+        st.subheader("📈 Resumen del período seleccionado")
+        
+        # Calcular total gastos
+        total_gastos = df_g['importe'].sum() if not df_g.empty else 0
+        
+        # Contar vehículos activos
+        if not df_v.empty and 'estatus' in df_v.columns:
+            vehiculos_activos = len(df_v[df_v['estatus'] == 'Alta'])
+        else:
+            vehiculos_activos = 0
+        
+        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+        with col_m1:
+            st.metric("🚑 Traslados Locales", len(df_t))
+        with col_m2:
+            st.metric("📋 Pliegos Foráneos", len(df_p))
+        with col_m3:
+            st.metric("💰 Total Gastos", f"${total_gastos:,.2f}")
+        with col_m4:
+            st.metric("🚗 Vehículos Activos", vehiculos_activos)
         
         st.divider()
-        st.markdown("### 5. Estado de Vehículos")
         
-        if not df_v.empty and all(col in df_v.columns for col in ['km_servicio', 'km_actual']):
-            df_v['km_restantes'] = df_v['km_servicio'] - df_v['km_actual']
-            df_v = df_v[df_v['km_restantes'] > 0]
-            if not df_v.empty:
-                fig5 = px.bar(df_v, x='km_restantes', y='ecco', orientation='h',
-                              title="Kilómetros para Mantenimiento",
-                              labels={'km_restantes': 'KM restantes', 'ecco': 'Vehículo'})
-                st.plotly_chart(fig5, use_container_width=True)
-            else:
-                st.info("Todos los vehículos están al día")
-        else:
-            st.info("No hay datos de vehículos")
-    
+        # ========================================
+        # GRÁFICA 1: Traslados Locales por Estatus
+        # ========================================
+        if mostrar_estatus:
+            with st.container():
+                st.markdown("### 1. Traslados Locales por Estatus")
+                
+                if not df_t.empty and 'estatus' in df_t.columns:
+                    col1, col2 = st.columns([4, 1])
+                    with col2:
+                        if st.button("📥 CSV", key="dl_estatus", help="Descargar datos"):
+                            estatus_counts = df_t['estatus'].value_counts().reset_index()
+                            estatus_counts.columns = ['estatus', 'cantidad']
+                            csv = estatus_counts.to_csv(index=False)
+                            b64 = base64.b64encode(csv.encode()).decode()
+                            href = f'<a href="data:file/csv;base64,{b64}" download="estatus.csv">📥 Descargar CSV</a>'
+                            st.markdown(href, unsafe_allow_html=True)
+                    
+                    estatus_counts = df_t['estatus'].value_counts().reset_index()
+                    estatus_counts.columns = ['estatus', 'cantidad']
+                    fig1 = px.bar(
+                        estatus_counts, 
+                        x='estatus', 
+                        y='cantidad', 
+                        color='estatus',
+                        title=f"Distribución por Estatus ({fecha_desde.strftime('%d/%m/%Y')} - {fecha_hasta.strftime('%d/%m/%Y')})"
+                    )
+                    st.plotly_chart(fig1, use_container_width=True)
+                else:
+                    st.info("📭 No hay datos de traslados locales para el período seleccionado")
+                    st.caption("Intenta con un rango de fechas más amplio o agrega registros")
+                st.divider()
+        
+        # ========================================
+        # GRÁFICA 2: Destinos más frecuentes
+        # ========================================
+        if mostrar_destinos:
+            with st.container():
+                st.markdown("### 2. Destinos más frecuentes")
+                
+                if not df_p.empty and 'destino' in df_p.columns:
+                    col1, col2 = st.columns([4, 1])
+                    with col2:
+                        if st.button("📥 CSV", key="dl_destinos", help="Descargar datos"):
+                            destino_counts = df_p['destino'].value_counts().reset_index()
+                            destino_counts.columns = ['destino', 'cantidad']
+                            csv = destino_counts.to_csv(index=False)
+                            b64 = base64.b64encode(csv.encode()).decode()
+                            href = f'<a href="data:file/csv;base64,{b64}" download="destinos.csv">📥 Descargar CSV</a>'
+                            st.markdown(href, unsafe_allow_html=True)
+                    
+                    destino_counts = df_p['destino'].value_counts().head(10).reset_index()
+                    destino_counts.columns = ['destino', 'cantidad']
+                    fig2 = px.bar(
+                        destino_counts, 
+                        x='cantidad', 
+                        y='destino', 
+                        orientation='h',
+                        title=f"Top 10 Destinos ({fecha_desde.strftime('%d/%m/%Y')} - {fecha_hasta.strftime('%d/%m/%Y')})"
+                    )
+                    st.plotly_chart(fig2, use_container_width=True)
+                else:
+                    st.info("📭 No hay datos de pliegos foráneos para el período seleccionado")
+                    st.caption("Intenta con un rango de fechas más amplio o agrega registros")
+                st.divider()
+        
+        # ========================================
+        # GRÁFICA 3: Traslados por Día
+        # ========================================
+        if mostrar_tiempo:
+            with st.container():
+                st.markdown("### 3. Traslados por Día")
+                
+                if not df_t.empty and 'fecha_creacion' in df_t.columns:
+                    col1, col2 = st.columns([4, 1])
+                    with col2:
+                        if st.button("📥 CSV", key="dl_tiempo", help="Descargar datos"):
+                            df_t_copy = df_t.copy()
+                            df_t_copy['fecha'] = pd.to_datetime(df_t_copy['fecha_creacion'], format='%d/%m/%Y', errors='coerce')
+                            df_dia = df_t_copy.groupby(df_t_copy['fecha'].dt.date).size().reset_index()
+                            df_dia.columns = ['fecha', 'cantidad']
+                            csv = df_dia.to_csv(index=False)
+                            b64 = base64.b64encode(csv.encode()).decode()
+                            href = f'<a href="data:file/csv;base64,{b64}" download="traslados_por_dia.csv">📥 Descargar CSV</a>'
+                            st.markdown(href, unsafe_allow_html=True)
+                    
+                    df_t['fecha'] = pd.to_datetime(df_t['fecha_creacion'], format='%d/%m/%Y', errors='coerce')
+                    df_dia = df_t.groupby(df_t['fecha'].dt.date).size().reset_index()
+                    df_dia.columns = ['fecha', 'cantidad']
+                    fig3 = px.line(
+                        df_dia, 
+                        x='fecha', 
+                        y='cantidad', 
+                        title=f"Traslados por día ({fecha_desde.strftime('%d/%m/%Y')} - {fecha_hasta.strftime('%d/%m/%Y')})",
+                        markers=True
+                    )
+                    st.plotly_chart(fig3, use_container_width=True)
+                else:
+                    st.info("📭 No hay datos de traslados para el período seleccionado")
+                    st.caption("Intenta con un rango de fechas más amplio o agrega registros")
+                st.divider()
+        
+        # ========================================
+        # GRÁFICA 4: Productividad por Empleado
+        # ========================================
+        if mostrar_empleados:
+            with st.container():
+                st.markdown("### 4. Productividad por Empleado")
+                
+                if not df_t.empty and 'empleado_comisionado' in df_t.columns:
+                    col1, col2 = st.columns([4, 1])
+                    with col2:
+                        if st.button("📥 CSV", key="dl_empleados", help="Descargar datos"):
+                            emp_counts = df_t['empleado_comisionado'].value_counts().head(10).reset_index()
+                            emp_counts.columns = ['empleado', 'cantidad']
+                            csv = emp_counts.to_csv(index=False)
+                            b64 = base64.b64encode(csv.encode()).decode()
+                            href = f'<a href="data:file/csv;base64,{b64}" download="empleados.csv">📥 Descargar CSV</a>'
+                            st.markdown(href, unsafe_allow_html=True)
+                    
+                    emp_counts = df_t['empleado_comisionado'].value_counts().head(10).reset_index()
+                    emp_counts.columns = ['empleado', 'cantidad']
+                    fig4 = px.bar(
+                        emp_counts, 
+                        x='cantidad', 
+                        y='empleado', 
+                        orientation='h',
+                        title="Top 10 empleados más activos"
+                    )
+                    st.plotly_chart(fig4, use_container_width=True)
+                else:
+                    st.info("📭 No hay datos de empleados para el período seleccionado")
+                    st.caption("Intenta con un rango de fechas más amplio o agrega registros")
+                st.divider()
+        
+        # ========================================
+        # GRÁFICA 5: Estado de Vehículos
+        # ========================================
+        if mostrar_vehiculos:
+            with st.container():
+                st.markdown("### 5. Estado de Vehículos")
+                
+                if not df_v.empty:
+                    col1, col2 = st.columns([4, 1])
+                    with col2:
+                        if st.button("📥 CSV", key="dl_vehiculos", help="Descargar datos"):
+                            csv = df_v.to_csv(index=False)
+                            b64 = base64.b64encode(csv.encode()).decode()
+                            href = f'<a href="data:file/csv;base64,{b64}" download="vehiculos.csv">📥 Descargar CSV</a>'
+                            st.markdown(href, unsafe_allow_html=True)
+                    
+                    if all(col in df_v.columns for col in ['km_servicio', 'km_actual']):
+                        df_v['km_restantes'] = df_v['km_servicio'] - df_v['km_actual']
+                        df_v_mant = df_v[df_v['km_restantes'] > 0].copy()
+                        if not df_v_mant.empty:
+                            fig5 = px.bar(
+                                df_v_mant, 
+                                x='km_restantes', 
+                                y='ecco', 
+                                orientation='h',
+                                title="Kilómetros para Mantenimiento",
+                                labels={'km_restantes': 'KM restantes', 'ecco': 'Vehículo'}
+                            )
+                            st.plotly_chart(fig5, use_container_width=True)
+                        else:
+                            st.success("✅ Todos los vehículos están al día")
+                else:
+                    st.info("📭 No hay datos de vehículos registrados")
+                st.divider()
+        
+        # ========================================
+        # GRÁFICA 6: Gastos por Categoría
+        # ========================================
+        if mostrar_gastos:
+            with st.container():
+                st.markdown("### 6. Gastos por Categoría")
+                
+                if not df_g.empty:
+                    col1, col2 = st.columns([4, 1])
+                    with col2:
+                        if st.button("📥 CSV", key="dl_gastos", help="Descargar datos"):
+                            csv = df_g.to_csv(index=False)
+                            b64 = base64.b64encode(csv.encode()).decode()
+                            href = f'<a href="data:file/csv;base64,{b64}" download="gastos.csv">📥 Descargar CSV</a>'
+                            st.markdown(href, unsafe_allow_html=True)
+                    
+                    gastos_cat = df_g.groupby('categoria')['importe'].sum().reset_index()
+                    if not gastos_cat.empty:
+                        fig6 = px.pie(
+                            gastos_cat, 
+                            values='importe', 
+                            names='categoria',
+                            title=f"Gastos por Categoría ({fecha_desde.strftime('%d/%m/%Y')} - {fecha_hasta.strftime('%d/%m/%Y')})"
+                        )
+                        st.plotly_chart(fig6, use_container_width=True)
+                    else:
+                        st.info("📭 No hay gastos registrados para este período")
+                else:
+                    st.info("📭 No hay datos de gastos para el período seleccionado")
+                    st.caption("Intenta con un rango de fechas más amplio o agrega registros")
+                st.divider()
+        
+        conn.close()
+        
     except Exception as e:
         st.error(f"Error en estadísticas: {e}")
         st.exception(e)
+
+# ============================================
+# FUNCIÓN AUXILIAR PARA EXPORTAR DATOS COMPLETOS
+# ============================================
+def exportar_datos_completos(conn):
+    """Exporta todos los datos a un archivo Excel"""
+    try:
+        import io
+        import pandas as pd
+        import base64  # 🔴 IMPORTANTE: También aquí
+        
+        # Crear archivo Excel en memoria
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            # Leer todas las tablas
+            tablas = ['pliegos', 'traslados_locales', 'vehiculos', 'usuarios', 'gastos', 'informes']
+            for tabla in tablas:
+                try:
+                    df = pd.read_sql_query(f"SELECT * FROM {tabla}", conn)
+                    df.to_excel(writer, sheet_name=tabla, index=False)
+                except Exception as e:
+                    print(f"Error exportando {tabla}: {e}")
+        
+        # Ofrecer descarga
+        output.seek(0)
+        b64 = base64.b64encode(output.read()).decode()
+        
+        # Crear link de descarga
+        href = f'''
+            <a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}" 
+               download="estadisticas_completas.xlsx"
+               style="display: inline-block; padding: 10px 20px; background-color: #004a44; color: white; 
+                      text-decoration: none; border-radius: 5px; margin-top: 10px;">
+                📥 Descargar Excel Completo
+            </a>
+        '''
+        
+        # Mostrar en la misma expansión
+        st.markdown("---")
+        st.markdown("##### ✅ Archivo generado:")
+        st.markdown(href, unsafe_allow_html=True)
+        
+    except Exception as e:
+        st.error(f"Error exportando: {e}")
 
 # ----------------------------------------------------------------------------
 # VISTA 3.5: INFORME DE COMISIÓN

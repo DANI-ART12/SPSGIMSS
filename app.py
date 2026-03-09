@@ -1,5 +1,5 @@
 # ============================================
-# app.py - VERSIÓN CORREGIDA CON NUEVAS VISTAS
+# app.py - VERSIÓN COMPLETA Y CORREGIDA CON HASH Y ESTILOS
 # ============================================
 
 import streamlit as st
@@ -10,9 +10,9 @@ import os
 from datetime import datetime, timedelta
 
 # ============================================
-# IMPORTACIONES CORRECTAS DESDE CADA MÓDULO
+# IMPORTACIONES CORRECTAS DESDE CADA MÚDULO
 # ============================================
-from modules.database import inicializar_base_datos, validar_login
+from modules.database import inicializar_base_datos, validar_login_seguro
 from modules.utils import (
     generar_folio_local,
     asegurar_hojas_excel,
@@ -24,12 +24,12 @@ from modules.db_handler import (
     actualizar_km_vehiculo,
     actualizar_base_datos_maestra,
     obtener_lista_usuarios,
-    obtener_vehiculos  # ← AGREGADO
+    obtener_vehiculos
 )
 from modules.forms import (
     vista_pliego,
-    vista_traslados_dia,           # ← NUEVA
-    vista_traslados_programados,    # ← NUEVA
+    vista_traslados_dia,
+    vista_traslados_programados,
     vista_historial_maestro,
     vista_estadisticas_admin,
     vista_informe_comision,
@@ -40,7 +40,7 @@ from modules.forms import (
 )
 
 print("✅ Funciones importadas correctamente:")
-print("   - database: inicializar_base_datos, validar_login")
+print("   - database: inicializar_base_datos, validar_login_seguro")
 print("   - utils: generar_folio_local, gestionar_config_permanente, get_base64")
 print("   - db_handler: guardar_o_actualizar_pliego, actualizar_km_vehiculo, obtener_vehiculos")
 print("   - forms: todas las vistas (incluyendo nuevas)")
@@ -81,7 +81,7 @@ primera_vez = not (folio_foraneo or folio_local)
 # ============================================
 inicializar_base_datos()
 print("🔧 Verificando base de datos...")
-if not os.path.exists("base_datos.xlsx"):
+if not os.path.exists("base_datos.db"):
     print("📁 Base de datos no encontrada. Creando...")
     inicializar_base_datos()
     print("✅ Base de datos creada exitosamente")
@@ -121,7 +121,7 @@ def configurar_folios_iniciales():
         st.rerun()
 
 # ============================================
-# PANTALLA DE LOGIN (DOS COLUMNAS)
+# PANTALLA DE LOGIN (DOS COLUMNAS) - CON HASH
 # ============================================
 if not st.session_state.autenticado:
     st.markdown("<br>", unsafe_allow_html=True)
@@ -146,13 +146,17 @@ if not st.session_state.autenticado:
             col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
             with col_btn2:
                 if st.form_submit_button("🔐 ENTRAR", use_container_width=True):
-                    user = validar_login(matricula, password)
-                    if user:
+                    resultado = validar_login_seguro(matricula, password)
+                    
+                    if resultado.get("exito"):
                         st.session_state.autenticado = True
-                        st.session_state.user_data = user
+                        st.session_state.user_data = resultado
                         st.rerun()
+                    elif resultado.get("error") == "BLOQUEADO":
+                        minutos = resultado.get("minutos_restantes", 5)
+                        st.error(f"🔒 Demasiados intentos. Espere {minutos} minutos.")
                     else:
-                        st.error("❌ Matrícula o contraseña incorrecta")
+                        st.error(resultado.get("mensaje", "❌ Matrícula o contraseña incorrecta"))
     
     with col_der:
         st.markdown(f"""
@@ -236,7 +240,7 @@ st.session_state.modo_claro = modo
 st.sidebar.divider()
 
 # ============================================
-# MENÚ PRINCIPAL (REESTRUCTURADO)
+# MENÚ PRINCIPAL
 # ============================================
 opciones_menu = []
 
@@ -249,7 +253,7 @@ opciones_menu.append("📊 Historial Pliegos e Informes")
 
 # Opciones solo para administradores
 if u['rol'] == "Administrador":
-    opciones_menu.append("📅 Traslados Programados")  # ← NUEVA (solo admin)
+    opciones_menu.append("📅 Traslados Programados")
     opciones_menu.append("👥 Historial Pacientes")
     opciones_menu.append("📈 Estadísticas Admin")
     opciones_menu.append("⚙️ Configuración")
@@ -260,49 +264,87 @@ opciones_menu.append("🚪 Cerrar sesión")
 menu = st.sidebar.radio("📌 Menú Principal", opciones_menu)
 
 # ============================================
-# ESTILOS (MODO CLARO / OSCURO)
+# ESTILOS (MODO CLARO / OSCURO) - VERSIÓN CORREGIDA
 # ============================================
 if st.session_state.modo_claro:
     st.markdown("""
         <style>
-        .stApp { background-color: #FFFFFF !important; color: #000000 !important; }
-        div[data-testid="stDialog"], div[role="dialog"], div[data-baseweb="modal"] {
+        /* Fondo principal */
+        .stApp {
             background-color: #FFFFFF !important;
-            border: 1px solid #DDE1E6 !important;
-            box-shadow: 0px 4px 16px rgba(0,0,0,0.1) !important;
         }
-        div[role="dialog"] * { color: #000000 !important; }
-        div[data-baseweb="select"] > div, div[data-baseweb="popover"] {
-            background-color: #F8F9FA !important;
+        
+        /* Todos los textos en oscuro */
+        .stApp, .stApp * {
             color: #000000 !important;
         }
-        div[data-baseweb="select"] * {
+        
+        /* Sidebar */
+        [data-testid="stSidebar"] {
+            background-color: #F0F2F6 !important;
+        }
+        [data-testid="stSidebar"] * {
             color: #000000 !important;
-            -webkit-text-fill-color: #000000 !important;
         }
-        button[kind="primary"], .stButton > button {
-            background-color: #004a44 !important;
-            color: #FFFFFF !important;
-            border: none !important;
-        }
-        input, textarea {
+        
+        /* Inputs y textareas */
+        input, textarea, .stTextInput input, .stTextArea textarea,
+        .stDateInput input, .stNumberInput input, .stTimeInput input {
             background-color: #F8F9FA !important;
             color: #000000 !important;
             border: 1px solid #CED4DA !important;
-            -webkit-text-fill-color: #000000 !important;
         }
-        .stTextInput label, .stTextArea label, .stSelectbox label, 
+        
+        /* Labels */
+        .stTextInput label, .stTextArea label, .stSelectbox label,
         .stDateInput label, .stTimeInput label, .stNumberInput label,
         [data-testid="stWidgetLabel"] p {
             color: #000000 !important;
             font-weight: 600 !important;
         }
+        
+        /* Placeholders */
         input::placeholder, textarea::placeholder {
             color: #6c757d !important;
             opacity: 1 !important;
         }
-        [data-testid="stSidebar"] { background-color: #F1F3F5 !important; }
-        [data-testid="stSidebar"] * { color: #000000 !important; }
+        
+        /* Botones primarios */
+        button[kind="primary"], .stButton > button {
+            background-color: #004a44 !important;
+            color: #FFFFFF !important;
+            border: none !important;
+        }
+        button[kind="primary"]:hover, .stButton > button:hover {
+            background-color: #005f56 !important;
+        }
+        
+        /* Select boxes */
+        div[data-baseweb="select"] > div {
+            background-color: #F8F9FA !important;
+            color: #000000 !important;
+            border: 1px solid #CED4DA !important;
+        }
+        div[data-baseweb="select"] * {
+            color: #000000 !important;
+        }
+        
+        /* Expanders */
+        .st-expanderHeader {
+            background-color: #F0F2F6 !important;
+            border: 1px solid #CED4DA !important;
+            color: #000000 !important;
+        }
+        .st-expanderHeader:hover {
+            background-color: #E2E8F0 !important;
+        }
+        .st-expanderContent {
+            background-color: #FFFFFF !important;
+            border: 1px solid #CED4DA !important;
+            border-top: none !important;
+        }
+        
+        /* Tablas y dataframes */
         div[data-testid="stDataFrame"], div[data-testid="stDataFrameViewPort"] {
             background-color: #FFFFFF !important;
         }
@@ -312,80 +354,123 @@ if st.session_state.modo_claro:
             color: #000000 !important;
             border: 1px solid #EEEEEE !important;
         }
-        .st-expanderHeader {
-            background-color: #F0F2F6 !important;
-            border: 1px solid #CED4DA !important;
-            border-radius: 10px !important;
-            transition: background-color 0.3s ease !important;
+        
+        /* Modales y diálogos */
+        div[data-testid="stDialog"], div[role="dialog"], div[data-baseweb="modal"] {
+            background-color: #FFFFFF !important;
+            border: 1px solid #DDE1E6 !important;
+            box-shadow: 0px 4px 16px rgba(0,0,0,0.1) !important;
         }
-        .st-expanderHeader p, .st-expanderHeader svg {
-            color: #1F2937 !important;
-            fill: #1F2937 !important;
+        div[role="dialog"] * {
+            color: #000000 !important;
         }
-        .st-expanderHeader:hover {
-            background-color: #E2E8F0 !important;
-            border-color: #004a44 !important;
-        }
-        .st-expanderContent {
+        
+        /* Popovers */
+        div[data-baseweb="popover"] {
             background-color: #FFFFFF !important;
             color: #000000 !important;
-            border: 1px solid #CED4DA !important;
-            border-top: none !important;
         }
-        p, h1, h2, h3, h4, h5, h6, span, div { color: #000000 !important; }
-        .stTextInput label, .stButton button { color: #000000 !important; }
-        .stButton button p { color: inherit !important; }
+        
+        /* Títulos y textos generales */
+        h1, h2, h3, h4, h5, h6, p, span, div {
+            color: #000000 !important;
+        }
+        
+        /* Links */
+        a {
+            color: #004a44 !important;
+        }
         </style>
     """, unsafe_allow_html=True)
 else:
     st.markdown("""
         <style>
-        .stApp { background-color: #0E1117 !important; color: #FFFFFF !important; }
-        [data-testid="stSidebar"] { background-color: #161B22 !important; }
-        [data-testid="stSidebar"] * { color: #FFFFFF !important; }
-        div.stButton > button { 
-            background-color: #004a44 !important; 
-            color: #FFFFFF !important; 
-            border: 1px solid #2d5a5a !important;
+        /* Fondo principal oscuro */
+        .stApp {
+            background-color: #0E1117 !important;
         }
-        div.stButton > button:hover { background-color: #005f56 !important; }
-        [data-testid="stExpander"] {
-            border: 1px solid #30363D !important;
-            background-color: #0D1117 !important;
+        
+        /* Textos en blanco */
+        .stApp, .stApp * {
+            color: #FFFFFF !important;
         }
-        [data-testid="stExpander"] summary { color: #FFFFFF !important; }
-        input, textarea, .stTextInput input, .stTextArea textarea {
+        
+        /* Sidebar */
+        [data-testid="stSidebar"] {
+            background-color: #161B22 !important;
+        }
+        [data-testid="stSidebar"] * {
+            color: #FFFFFF !important;
+        }
+        
+        /* Inputs */
+        input, textarea, .stTextInput input, .stTextArea textarea,
+        .stDateInput input, .stNumberInput input, .stTimeInput input {
             background-color: #262730 !important;
             color: #FFFFFF !important;
             border: 1px solid #404040 !important;
             -webkit-text-fill-color: #FFFFFF !important;
         }
-        .stTextInput label, .stTextArea label, .stSelectbox label, 
+        
+        /* Labels */
+        .stTextInput label, .stTextArea label, .stSelectbox label,
         .stDateInput label, .stTimeInput label, .stNumberInput label {
             color: #CCCCCC !important;
-            font-weight: 500 !important;
         }
+        
+        /* Placeholders */
         input::placeholder, textarea::placeholder {
             color: #AAAAAA !important;
-            opacity: 1 !important;
         }
+        
+        /* Botones primarios */
+        button[kind="primary"], .stButton > button {
+            background-color: #004a44 !important;
+            color: #FFFFFF !important;
+            border: 1px solid #2d5a5a !important;
+        }
+        button[kind="primary"]:hover, .stButton > button:hover {
+            background-color: #005f56 !important;
+        }
+        
+        /* Select boxes */
         div[data-baseweb="select"] > div {
             background-color: #262730 !important;
             color: #FFFFFF !important;
             border: 1px solid #404040 !important;
         }
-        div[data-baseweb="select"] * { color: #FFFFFF !important; }
+        div[data-baseweb="select"] * {
+            color: #FFFFFF !important;
+        }
+        
+        /* Expanders */
+        [data-testid="stExpander"] {
+            border: 1px solid #30363D !important;
+            background-color: #0D1117 !important;
+        }
+        [data-testid="stExpander"] summary {
+            color: #FFFFFF !important;
+        }
+        
+        /* Modales */
         div[data-testid="stDialog"], div[role="dialog"], div[data-baseweb="modal"] {
             background-color: #1E1E1E !important;
             border: 1px solid #404040 !important;
         }
-        div[role="dialog"] * { color: #FFFFFF !important; }
+        div[role="dialog"] * {
+            color: #FFFFFF !important;
+        }
+        
+        /* Popovers */
         div[data-baseweb="popover"] {
             background-color: #1E1E1E !important;
             color: #FFFFFF !important;
         }
-        p, h1, h2, h3, h4, h5, h6, span, div, .stMarkdown { color: #FFFFFF !important; }
-        .stTextInput label { color: #CCCCCC !important; }
+        
+        /* Links */
+        a {
+            color: #4CAF50 !important;
+        }
         </style>
     """, unsafe_allow_html=True)
 
@@ -414,7 +499,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================
-# NAVEGACIÓN SEGÚN OPCIÓN DEL MENÚ (ACTUALIZADA)
+# NAVEGACIÓN SEGÚN OPCIÓN DEL MENÚ
 # ============================================
 try:
     if menu == "🚪 Cerrar sesión":
@@ -424,11 +509,11 @@ try:
         st.rerun()
     
     elif menu == "🚑 Traslados del Día (HOY)":
-        vista_traslados_dia(u)  # ← NUEVA - Todos pueden ver
+        vista_traslados_dia(u)
     
     elif menu == "📅 Traslados Programados":
         if u['rol'] == "Administrador":
-            vista_traslados_programados(u)  # ← NUEVA - Solo admin
+            vista_traslados_programados(u)
         else:
             st.error("🚫 Acceso restringido a Administradores")
     
