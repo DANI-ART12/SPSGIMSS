@@ -1592,6 +1592,7 @@ def vista_historial_maestro(u):
             if status_filtro != "Todos" and 'estatus_display' in df_filtrado.columns: 
                 df_filtrado = df_filtrado[df_filtrado['estatus_display'] == status_filtro]
         
+        folio_a_clonar = None
         st.divider()
         col_acc1, col_acc2, col_acc3, col_acc4 = st.columns([1, 1, 2, 2])
         
@@ -1607,6 +1608,7 @@ def vista_historial_maestro(u):
         with col_acc2:
             if st.button("🔄 Refrescar", use_container_width=True, key="btn_refrescar"):
                 st.rerun()
+
         
         with col_acc3:
             if 'folio' in df_filtrado.columns and not df_filtrado.empty:
@@ -1620,9 +1622,13 @@ def vista_historial_maestro(u):
         with col_acc4:
             if folio_a_clonar and folio_a_clonar != "-- Seleccionar --":
                 if st.button("♻️ REUTILIZAR FOLIO", use_container_width=True, key="btn_reutilizar_arriba"):
-                    datos_completos = df_filtrado[df_filtrado['folio'] == folio_a_clonar].iloc[0].to_dict()
-                    tipo = datos_completos.get('tipo_doc', '')
-                    modal_reutilizar_folio(datos_completos, tipo, u)
+                    try:
+                        datos_completos = df_filtrado[df_filtrado['folio'] == folio_a_clonar].iloc[0].to_dict()
+                        tipo = datos_completos.get('tipo_doc', '')
+                        modal_reutilizar_folio(datos_completos, tipo, u)
+                    except Exception as e:
+                        st.error(f"Error al cargar datos para reutilizar: {e}")
+
         
         st.divider()
         st.subheader("📋 Registros del Sistema")
@@ -1707,206 +1713,448 @@ def vista_historial_maestro(u):
 # ----------------------------------------------------------------------------
 def vista_configuracion():
     st.subheader("⚙️ Configuración del Sistema")
-    
+
     t1, t2, t3 = st.tabs(["👤 Usuarios", "🚗 Vehículos", "🏥 Hospitales"])
-    
+
+    # -----------------------------------------------------------
+    # USUARIOS
+    # -----------------------------------------------------------
     with t1:
         try:
             xls = pd.ExcelFile(DB_FILE)
             df_usuarios = pd.read_excel(xls, sheet_name='usuarios').fillna("")
-            hojas_restantes = {s: pd.read_excel(xls, s) for s in xls.sheet_names if s != 'usuarios'}
+            hojas_restantes = {
+                s: pd.read_excel(xls, s)
+                for s in xls.sheet_names if s != 'usuarios'
+            }
         except:
-            df_usuarios = pd.DataFrame(columns=["matricula","nombre","apellido_p","apellido_m","curp","rfc","departamento","tipo_contrato","gj","categoria","password","rol","estatus"])
+            df_usuarios = pd.DataFrame(columns=[
+                "matricula","nombre","apellido_p","apellido_m","curp","rfc",
+                "departamento","tipo_contrato","gj","categoria",
+                "password","rol","estatus"
+            ])
             hojas_restantes = {}
-        
+
         with st.popover("➕ Registrar Nuevo Usuario"):
             with st.form("f_u", clear_on_submit=True):
+
                 c1, c2 = st.columns(2)
+
                 mat = c1.text_input("Matrícula", key="reg_matricula")
                 nom = c2.text_input("Nombre(s)", key="reg_nombre")
+
                 ap_p = c1.text_input("Apellido Paterno", key="reg_ap_p")
                 ap_m = c2.text_input("Apellido Materno", key="reg_ap_m")
+
                 curp = c1.text_input("CURP", key="reg_curp")
                 rfc = c2.text_input("RFC", key="reg_rfc")
+
                 c3, c4, c5 = st.columns(3)
+
                 depto = c3.text_input("Departamento", key="reg_depto")
                 tipoc = c4.text_input("Tipo de Contrato", key="reg_tipoc")
                 gj = c5.text_input("G-J", key="reg_gj")
+
                 categoria = c1.text_input("Categoría", key="reg_categoria")
                 pas = c2.text_input("Contraseña", type="password", key="reg_password")
+
                 rol = c1.selectbox("Rol", ["Usuario", "Administrador"], key="reg_rol")
                 est = c2.selectbox("Estatus", ["Alta", "Baja", "Baja Temporal"], key="reg_estatus")
-                
+
                 if st.form_submit_button("Guardar Usuario", use_container_width=True):
+
                     if mat and nom and pas:
+
                         nueva = {
-                            "matricula": mat, 
-                            "nombre": nom, 
-                            "apellido_p": ap_p, 
-                            "apellido_m": ap_m, 
-                            "curp": curp, 
-                            "rfc": rfc, 
-                            "departamento": depto, 
-                            "tipo_contrato": tipoc, 
-                            "gj": gj, 
-                            "categoria": categoria, 
-                            "password": pas, 
-                            "rol": rol, 
+                            "matricula": mat,
+                            "nombre": nom,
+                            "apellido_p": ap_p,
+                            "apellido_m": ap_m,
+                            "curp": curp,
+                            "rfc": rfc,
+                            "departamento": depto,
+                            "tipo_contrato": tipoc,
+                            "gj": gj,
+                            "categoria": categoria,
+                            "password": pas,
+                            "rol": rol,
                             "estatus": est
                         }
-                        df_usuarios = pd.concat([df_usuarios, pd.DataFrame([nueva])], ignore_index=True)
+
+                        df_usuarios = pd.concat(
+                            [df_usuarios, pd.DataFrame([nueva])],
+                            ignore_index=True
+                        )
+
                         with pd.ExcelWriter(DB_FILE, engine='openpyxl') as writer:
-                            df_usuarios.to_excel(writer, sheet_name='usuarios', index=False)
-                            for n, d in hojas_restantes.items(): 
+
+                            df_usuarios.to_excel(
+                                writer,
+                                sheet_name='usuarios',
+                                index=False
+                            )
+
+                            for n, d in hojas_restantes.items():
                                 d.to_excel(writer, sheet_name=n, index=False)
+
                         st.success("✅ Usuario registrado")
                         st.rerun()
-        
+
         st.write("### Personal Registrado")
+
         cols_mostrar = [c for c in df_usuarios.columns if c != 'password']
-        st.dataframe(df_usuarios[cols_mostrar], use_container_width=True, hide_index=True)
-        
+
+        st.dataframe(
+            df_usuarios[cols_mostrar],
+            use_container_width=True,
+            hide_index=True
+        )
+
         st.divider()
+
         st.write("### 🔑 Editar Usuario / Contraseña")
+
         mat_edit = st.text_input("Matrícula a buscar para editar", key="mat_edit")
+
         if mat_edit:
-            df_usuarios['matricula'] = df_usuarios['matricula'].astype(str).str.replace(r'\.0$', '', regex=True)
-            idx = df_usuarios.index[df_usuarios['matricula'] == str(mat_edit).strip()].tolist()
+
+            df_usuarios['matricula'] = df_usuarios['matricula'].astype(str).str.replace(
+                r'\.0$', '', regex=True
+            )
+
+            idx = df_usuarios.index[
+                df_usuarios['matricula'] == str(mat_edit).strip()
+            ].tolist()
+
             if idx:
+
                 u_idx = idx[0]
+
                 with st.form("edit_u"):
-                    e_categoria = st.text_input("Categoría", value=df_usuarios.at[u_idx, 'categoria'], key="edit_categoria")
-                    e_pass = st.text_input("Contraseña", value=df_usuarios.at[u_idx, 'password'], key="edit_password")
-                    e_est = st.selectbox("Estatus", ["Alta", "Baja", "Baja Temporal"], 
-                                        index=["Alta", "Baja", "Baja Temporal"].index(df_usuarios.at[u_idx, 'estatus']),
-                                        key="edit_estatus")
+
+                    e_categoria = st.text_input(
+                        "Categoría",
+                        value=df_usuarios.at[u_idx, 'categoria'],
+                        key="edit_categoria"
+                    )
+
+                    e_pass = st.text_input(
+                        "Contraseña",
+                        value=df_usuarios.at[u_idx, 'password'],
+                        key="edit_password"
+                    )
+
+                    e_est = st.selectbox(
+                        "Estatus",
+                        ["Alta", "Baja", "Baja Temporal"],
+                        index=["Alta", "Baja", "Baja Temporal"].index(
+                            df_usuarios.at[u_idx, 'estatus']
+                        ),
+                        key="edit_estatus"
+                    )
+
                     if st.form_submit_button("Actualizar Datos", use_container_width=True):
+
                         df_usuarios.at[u_idx, 'categoria'] = e_categoria
                         df_usuarios.at[u_idx, 'password'] = e_pass
                         df_usuarios.at[u_idx, 'estatus'] = e_est
+
                         with pd.ExcelWriter(DB_FILE, engine='openpyxl') as writer:
-                            df_usuarios.to_excel(writer, sheet_name='usuarios', index=False)
-                            for n, d in hojas_restantes.items(): 
+
+                            df_usuarios.to_excel(
+                                writer,
+                                sheet_name='usuarios',
+                                index=False
+                            )
+
+                            for n, d in hojas_restantes.items():
                                 d.to_excel(writer, sheet_name=n, index=False)
+
                         st.success("✨ Actualizado")
                         st.rerun()
-    
+
+    # -----------------------------------------------------------
+    # VEHÍCULOS
+    # -----------------------------------------------------------
     with t2:
+
         try:
+
             xls = pd.ExcelFile(DB_FILE)
+
             df_v = pd.read_excel(xls, sheet_name='vehiculos').fillna("")
-            hojas_restantes = {s: pd.read_excel(xls, s) for s in xls.sheet_names if s != 'vehiculos'}
+
+            hojas_restantes = {
+                s: pd.read_excel(xls, s)
+                for s in xls.sheet_names if s != 'vehiculos'
+            }
+
         except:
-            df_v = pd.DataFrame(columns=["tipo", "ecco", "placas", "marca", "modelo", "km_actual", "km_servicio", "estatus"])
+
+            df_v = pd.DataFrame(columns=[
+                "tipo", "ecco", "placas", "marca",
+                "modelo", "km_actual", "km_servicio", "estatus"
+            ])
+
             hojas_restantes = {}
-        
+
         with st.popover("➕ Registrar Vehículo"):
+
             with st.form("f_v", clear_on_submit=True):
+
                 c1, c2 = st.columns(2)
+
                 v_tip = c1.text_input("Tipo", key="reg_v_tipo")
                 v_ecc = c2.text_input("ECCO", key="reg_v_ecco")
+
                 v_pla = c1.text_input("Placas", key="reg_v_placas")
                 v_mar = c2.text_input("Marca", key="reg_v_marca")
+
                 v_mod = c1.text_input("Modelo", key="reg_v_modelo")
-                v_kma = c2.number_input("Kilometraje Actual", min_value=0, key="reg_v_kma")
+
+                v_kma = c2.number_input(
+                    "Kilometraje Actual",
+                    min_value=0,
+                    key="reg_v_kma"
+                )
+
                 v_kms = st.text_input("KM Próximo Servicio", key="reg_v_kms")
-                v_est = st.selectbox("Estatus", ["Alta", "Baja", "Mantenimiento"], key="reg_v_estatus")
+
+                v_est = st.selectbox(
+                    "Estatus",
+                    ["Alta", "Baja", "Mantenimiento"],
+                    key="reg_v_estatus"
+                )
+
                 if st.form_submit_button("Guardar Vehículo", use_container_width=True):
+
                     nueva_v = {
-                        "tipo": v_tip, 
-                        "ecco": v_ecc, 
-                        "placas": v_pla, 
-                        "marca": v_mar, 
-                        "modelo": v_mod, 
-                        "km_actual": v_kma, 
-                        "km_servicio": v_kms, 
+                        "tipo": v_tip,
+                        "ecco": v_ecc,
+                        "placas": v_pla,
+                        "marca": v_mar,
+                        "modelo": v_mod,
+                        "km_actual": v_kma,
+                        "km_servicio": v_kms,
                         "estatus": v_est
                     }
-                    df_v = pd.concat([df_v, pd.DataFrame([nueva_v])], ignore_index=True)
+
+                    df_v = pd.concat(
+                        [df_v, pd.DataFrame([nueva_v])],
+                        ignore_index=True
+                    )
+
                     with pd.ExcelWriter(DB_FILE, engine='openpyxl') as writer:
+
                         df_v.to_excel(writer, sheet_name='vehiculos', index=False)
-                        for n, d in hojas_restantes.items(): 
+
+                        for n, d in hojas_restantes.items():
                             d.to_excel(writer, sheet_name=n, index=False)
+
                     st.success("✅ Vehículo guardado")
                     st.rerun()
-        
+
         st.write("### Flota Vehicular")
-        st.dataframe(df_v, use_container_width=True, hide_index=True)
-        
+
+        st.dataframe(
+            df_v,
+            use_container_width=True,
+            hide_index=True
+        )
+
         st.divider()
+
         st.write("### 🔧 Actualizar KM / Estatus")
-        ecco_edit = st.text_input("Ingresa ECCO para actualizar", key="ecco_edit")
+
+        ecco_edit = st.text_input(
+            "Ingresa ECCO para actualizar",
+            key="ecco_edit"
+        )
+
         if ecco_edit:
-            df_v['ecco'] = df_v['ecco'].astype(str).str.replace(r'\.0$', '', regex=True)
-            idx_v = df_v.index[df_v['ecco'] == str(ecco_edit).strip()].tolist()
+
+            df_v['ecco'] = df_v['ecco'].astype(str).str.replace(
+                r'\.0$', '', regex=True
+            )
+
+            idx_v = df_v.index[
+                df_v['ecco'] == str(ecco_edit).strip()
+            ].tolist()
+
             if idx_v:
+
                 v_idx = idx_v[0]
+
                 with st.form("edit_v"):
-                    n_km = st.number_input("Nuevo KM", value=int(df_v.at[v_idx, 'km_actual']), key="edit_v_km")
-                    n_est = st.selectbox("Estatus", ["Alta", "Baja", "Mantenimiento"], 
-                                        index=["Alta", "Baja", "Mantenimiento"].index(df_v.at[v_idx, 'estatus']),
-                                        key="edit_v_estatus")
+
+                    n_km = st.number_input(
+                        "Nuevo KM",
+                        value=int(df_v.at[v_idx, 'km_actual']),
+                        key="edit_v_km"
+                    )
+
+                    n_est = st.selectbox(
+                        "Estatus",
+                        ["Alta", "Baja", "Mantenimiento"],
+                        index=["Alta", "Baja", "Mantenimiento"].index(
+                            df_v.at[v_idx, 'estatus']
+                        ),
+                        key="edit_v_estatus"
+                    )
+
                     if st.form_submit_button("Actualizar Unidad", use_container_width=True):
+
                         df_v.at[v_idx, 'km_actual'] = n_km
                         df_v.at[v_idx, 'estatus'] = n_est
+
                         with pd.ExcelWriter(DB_FILE, engine='openpyxl') as writer:
+
                             df_v.to_excel(writer, sheet_name='vehiculos', index=False)
-                            for n, d in hojas_restantes.items(): 
+
+                            for n, d in hojas_restantes.items():
                                 d.to_excel(writer, sheet_name=n, index=False)
+
                         st.success("✨ Unidad actualizada")
                         st.rerun()
-    
+
+    # -----------------------------------------------------------
+    # HOSPITALES (SQLITE)
+    # -----------------------------------------------------------
     with t3:
+
         try:
-            xls = pd.ExcelFile(DB_FILE)
-            df_h = pd.read_excel(xls, sheet_name='hospitales').fillna("")
-            hojas_restantes = {s: pd.read_excel(xls, s) for s in xls.sheet_names if s != 'hospitales'}
-        except:
-            df_h = pd.DataFrame(columns=["estado", "nombre_hosp", "direccion", "alto_costo"])
-            hojas_restantes = {}
-        
+
+            from modules.database import get_connection
+
+            conn = get_connection()
+
+            df_h = pd.read_sql_query(
+                "SELECT * FROM hospitales ORDER BY nombre_hosp",
+                conn
+            )
+
+            conn.close()
+
+            df_h = df_h.fillna("")
+
+        except Exception as e:
+
+            print(f"Error cargando hospitales: {e}")
+
+            df_h = pd.DataFrame(columns=[
+                "id", "estado", "nombre_hosp", "direccion", "alto_costo"
+            ])
+
         with st.popover("➕ Registrar Hospital"):
+
             with st.form("f_h", clear_on_submit=True):
+
                 h_est = st.text_input("Estado", key="reg_h_estado")
                 h_nom = st.text_input("Nombre Hospital", key="reg_h_nombre")
                 h_dir = st.text_input("Dirección", key="reg_h_direccion")
-                h_ac = st.radio("¿Alto Costo?", ["No", "Sí"], key="reg_h_alto_costo")
-                if st.form_submit_button("Guardar Hospital", use_container_width=True):
-                    nueva_h = {
-                        "estado": h_est, 
-                        "nombre_hosp": h_nom, 
-                        "direccion": h_dir, 
-                        "alto_costo": h_ac
-                    }
-                    df_h = pd.concat([df_h, pd.DataFrame([nueva_h])], ignore_index=True)
-                    with pd.ExcelWriter(DB_FILE, engine='openpyxl') as writer:
-                        df_h.to_excel(writer, sheet_name='hospitales', index=False)
-                        for n, d in hojas_restantes.items(): 
-                            d.to_excel(writer, sheet_name=n, index=False)
-                    st.success("✅ Hospital registrado")
-                    st.rerun()
-        
-        st.write("### Catálogo de Hospitales")
-        st.dataframe(df_h, use_container_width=True, hide_index=True)
-        
-        st.divider()
-        st.write("### 🏥 Editar Hospital")
-        h_sel = st.selectbox("Selecciona hospital para modificar", [""] + df_h['nombre_hosp'].tolist(), key="h_sel")
-        if h_sel:
-            h_idx = df_h.index[df_h['nombre_hosp'] == h_sel][0]
-            with st.form("edit_h"):
-                n_dir = st.text_input("Dirección", value=df_h.at[h_idx, 'direccion'], key="edit_h_dir")
-                n_ac = st.radio("Alto Costo", ["No", "Sí"], index=0 if df_h.at[h_idx, 'alto_costo'] == "No" else 1, key="edit_h_ac")
-                if st.form_submit_button("Actualizar Hospital", use_container_width=True):
-                    df_h.at[h_idx, 'direccion'] = n_dir
-                    df_h.at[h_idx, 'alto_costo'] = n_ac
-                    with pd.ExcelWriter(DB_FILE, engine='openpyxl') as writer:
-                        df_h.to_excel(writer, sheet_name='hospitales', index=False)
-                        for n, d in hojas_restantes.items(): 
-                            d.to_excel(writer, sheet_name=n, index=False)
-                    st.success("✨ Hospital actualizado")
-                    st.rerun()
 
+                h_ac = st.radio(
+                    "¿Alto Costo?",
+                    ["No", "Sí"],
+                    key="reg_h_alto_costo"
+                )
+
+                if st.form_submit_button("Guardar Hospital", use_container_width=True):
+
+                    try:
+
+                        conn = get_connection()
+                        cursor = conn.cursor()
+
+                        cursor.execute("""
+                            INSERT INTO hospitales
+                            (estado, nombre_hosp, direccion, alto_costo)
+                            VALUES (?, ?, ?, ?)
+                        """, (h_est, h_nom, h_dir, h_ac))
+
+                        conn.commit()
+                        conn.close()
+
+                        st.success("✅ Hospital registrado")
+                        st.rerun()
+
+                    except Exception as e:
+
+                        st.error(f"Error al guardar: {e}")
+
+        st.write("### Catálogo de Hospitales")
+
+        if not df_h.empty:
+
+            cols_mostrar = [c for c in df_h.columns if c != 'id']
+
+            st.dataframe(
+                df_h[cols_mostrar],
+                use_container_width=True,
+                hide_index=True
+            )
+
+        else:
+
+            st.info("No hay hospitales registrados")
+
+        st.divider()
+
+        st.write("### 🏥 Editar Hospital")
+
+        if not df_h.empty and 'nombre_hosp' in df_h.columns:
+
+            h_sel = st.selectbox(
+                "Selecciona hospital para modificar",
+                [""] + df_h['nombre_hosp'].tolist(),
+                key="h_sel"
+            )
+
+            if h_sel:
+
+                h_idx = df_h.index[df_h['nombre_hosp'] == h_sel][0]
+
+                with st.form("edit_h"):
+
+                    n_dir = st.text_input(
+                        "Dirección",
+                        value=df_h.at[h_idx, 'direccion'],
+                        key="edit_h_dir"
+                    )
+
+                    n_ac = st.radio(
+                        "Alto Costo",
+                        ["No", "Sí"],
+                        index=0 if df_h.at[h_idx, 'alto_costo'] == "No" else 1,
+                        key="edit_h_ac"
+                    )
+
+                    if st.form_submit_button("Actualizar Hospital", use_container_width=True):
+
+                        try:
+
+                            conn = get_connection()
+                            cursor = conn.cursor()
+
+                            cursor.execute("""
+                                UPDATE hospitales
+                                SET direccion = ?, alto_costo = ?
+                                WHERE nombre_hosp = ?
+                            """, (n_dir, n_ac, h_sel))
+
+                            conn.commit()
+                            conn.close()
+
+                            st.success("✨ Hospital actualizado")
+                            st.rerun()
+
+                        except Exception as e:
+
+                            st.error(f"Error al actualizar: {e}")
+
+        else:
+
+            st.info("No hay hospitales para editar")
 # ----------------------------------------------------------------------------
 # VISTA 3.2: CONFIGURACIÓN ADMIN (DATOS INSTITUCIONALES)
 # ----------------------------------------------------------------------------
